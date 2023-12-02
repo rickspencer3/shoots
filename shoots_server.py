@@ -40,37 +40,44 @@ class ShootsServer(flight.FlightServerBase):
         file_path = f"{name}.parquet"
         
         if os.path.exists(file_path):
-            if mode == "error":
-                raise FileExistsError(f"{name} already exists. Set mode to 'replace' or 'append'")
-            elif mode == "append":
+            if mode == "append":
                 existing_table = pq.read_table(file_path)
                 data_table = pa.concat_tables([data_table, existing_table])
+                pq.write_table(data_table, file_path)
+            
+            if(mode != "ignore"):
+                pq.write_table(data_table, file_path)
+        else:
             pq.write_table(data_table, file_path)
 
     def do_action(self, context, action):
         action, data = action.type, action.body.to_pybytes().decode()
         data = json.loads(data)
         if action == "delete":
-            print(data['name'])
-            file_path = f"{data['name']}.parquet"
+            return self._delete(data)
+        if action == "list":
+            pass
+
+    def _delete(self, data):
+        file_path = f"{data['name']}.parquet"
             
-            msg = f"{data['name']} deleted succesfully"
-            success = True
-            try:
-                os.remove(file_path)
-            except FileNotFoundError:
-                msg = (f"{data} does not exist.")
-                success = False
-            except PermissionError:
-                msg = f"Permission denied: unable to delete {data}."
-                success = False
-            except OSError as e:
-                msg = f"Error deleting file {file_path}: {e}"
-                success = False
+        msg = f"{data['name']} deleted succesfully"
+        success = True
+        try:
+            os.remove(file_path)
+        except FileNotFoundError:
+            msg = (f"{data} does not exist.")
+            success = False
+        except PermissionError:
+            msg = f"Permission denied: unable to delete {data}."
+            success = False
+        except OSError as e:
+            msg = f"Error deleting file {file_path}: {e}"
+            success = False
             
-            bytes = json.dumps({"success":success, "message":msg}).encode()
-            result = flight.Result(bytes)
-            return [result]
+        bytes = json.dumps({"success":success, "message":msg}).encode()
+        result = flight.Result(bytes)
+        return [result]
         
 def run_flight_server():
     location = flight.Location.for_grpc_tcp("localhost", 8081)

@@ -10,7 +10,7 @@ from enum import Enum
 class PutMode(Enum):
     REPLACE = "replace"
     APPEND = "append"
-    ERROR = "error"
+    IGNORE = "ignore"
 
 class ClientConfig(BaseSettings):
     host: str
@@ -28,7 +28,7 @@ class DeleteRequest(BaseModel):
 class PutRequest(BaseModel):
     dataframe: pd.DataFrame
     name: str
-    mode: PutMode = PutMode.ERROR
+    mode: PutMode = PutMode.IGNORE
 
     class Config:
         arbitrary_types_allowed = True
@@ -58,17 +58,19 @@ class ShootsClient:
             print(f"Configuration error: {e}")
             raise
 
-    def put(self, name: str, dataframe: pd.DataFrame, mode: PutMode = PutMode.ERROR):
+    def put(self, name: str, dataframe: pd.DataFrame, mode: PutMode = PutMode.IGNORE):
         
         try:
             req = PutRequest(dataframe=dataframe, name=name, mode=mode)
-            print(req.mode)
+
             command = json.dumps({"name": req.name, "mode": req.mode.value}).encode()
             descriptor = FlightDescriptor.for_command(command)
             table = pa.Table.from_pandas(req.dataframe)
-            writer, _ = self.client.do_put(descriptor, table.schema)
-            writer.write_table(table)
-
+            try:
+                writer, _ = self.client.do_put(descriptor, table.schema)
+                writer.write_table(table)
+            except Exception as e:
+                print(e)
         except ValidationError as e:
             print(f"Validation error: {e}")
 
