@@ -5,6 +5,12 @@ import pyarrow as pa
 from pyarrow.flight import FlightDescriptor, FlightClient, Ticket, Action
 import pandas as pd
 import json
+from enum import Enum
+
+class PutMode(Enum):
+    REPLACE = "replace"
+    APPEND = "append"
+    ERROR = "error"
 
 class ClientConfig(BaseSettings):
     host: str
@@ -22,6 +28,7 @@ class DeleteRequest(BaseModel):
 class PutRequest(BaseModel):
     dataframe: pd.DataFrame
     name: str
+    mode: PutMode = PutMode.ERROR
 
     class Config:
         arbitrary_types_allowed = True
@@ -51,13 +58,17 @@ class ShootsClient:
             print(f"Configuration error: {e}")
             raise
 
-    def put(self, name: str, dataframe: pd.DataFrame):
+    def put(self, name: str, dataframe: pd.DataFrame, mode: PutMode = PutMode.ERROR):
+        
         try:
-            req = PutRequest(dataframe=dataframe, name=name)
-            descriptor = FlightDescriptor.for_path(req.name)
+            req = PutRequest(dataframe=dataframe, name=name, mode=mode)
+            print(req.mode)
+            command = json.dumps({"name": req.name, "mode": req.mode.value}).encode()
+            descriptor = FlightDescriptor.for_command(command)
             table = pa.Table.from_pandas(req.dataframe)
             writer, _ = self.client.do_put(descriptor, table.schema)
             writer.write_table(table)
+
         except ValidationError as e:
             print(f"Validation error: {e}")
 

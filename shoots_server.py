@@ -30,22 +30,23 @@ class ShootsServer(flight.FlightServerBase):
             print(e)
     
     def do_put(self, context, descriptor, reader, writer):
-        table_name = descriptor.path[0].decode('utf-8')
+        command = json.loads(descriptor.command.decode())
+
+        # Extract name and mode from the command
+        name = command["name"]
+        mode = command["mode"]
+
         data_table = reader.read_all()
-        file_path = f"{table_name}.parquet"
+        file_path = f"{name}.parquet"
         
         if os.path.exists(file_path):
-            try:
+            if mode == "error":
+                raise FileExistsError(f"{name} already exists. Set mode to 'replace' or 'append'")
+            elif mode == "append":
                 existing_table = pq.read_table(file_path)
                 data_table = pa.concat_tables([data_table, existing_table])
-            except Exception as e:
-                print(e)
-
-        try:
             pq.write_table(data_table, file_path)
-        except Exception as e:
-            print(e)
-    
+
     def do_action(self, context, action):
         action, data = action.type, action.body.to_pybytes().decode()
         data = json.loads(data)
