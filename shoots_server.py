@@ -45,7 +45,32 @@ class ShootsServer(flight.FlightServerBase):
             pq.write_table(data_table, file_path)
         except Exception as e:
             print(e)
-
+    
+    def do_action(self, context, action):
+        action, data = action.type, action.body.to_pybytes().decode()
+        data = json.loads(data)
+        if action == "delete":
+            print(data['name'])
+            file_path = f"{data['name']}.parquet"
+            
+            msg = f"{data['name']} deleted succesfully"
+            success = True
+            try:
+                os.remove(file_path)
+            except FileNotFoundError:
+                msg = (f"{data} does not exist.")
+                success = False
+            except PermissionError:
+                msg = f"Permission denied: unable to delete {data}."
+                success = False
+            except OSError as e:
+                msg = f"Error deleting file {file_path}: {e}"
+                success = False
+            
+            bytes = json.dumps({"success":success, "message":msg}).encode()
+            result = flight.Result(bytes)
+            return [result]
+        
 def run_flight_server():
     location = flight.Location.for_grpc_tcp("localhost", 8081)
     server = ShootsServer(location)

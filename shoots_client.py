@@ -2,7 +2,7 @@ from pydantic import BaseModel, ValidationError, validator
 from pydantic_settings import BaseSettings
 from typing import Optional
 import pyarrow as pa
-from pyarrow.flight import FlightDescriptor, FlightClient, Ticket
+from pyarrow.flight import FlightDescriptor, FlightClient, Ticket, Action
 import pandas as pd
 import json
 
@@ -10,6 +10,15 @@ class ClientConfig(BaseSettings):
     host: str
     port: int
 
+class DeleteRequest(BaseModel):
+    name: str
+
+    @validator('name')
+    def validate_name(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError('name must be a non-empty string')
+        return v
+    
 class PutRequest(BaseModel):
     dataframe: pd.DataFrame
     name: str
@@ -66,3 +75,15 @@ class ShootsClient:
         
         except ValidationError as e:
             print(f"Validation error: {e}")
+    
+    def delete(self, name: str):
+        action_description = json.dumps({"name":name}).encode()
+        action = Action("delete",action_description)
+        result = self.client.do_action(action)
+
+        msg = ""
+        for r in result:
+            msg += r.body.to_pybytes().decode() + "\n"
+        
+        msg = msg.rstrip("\n")
+        return msg
