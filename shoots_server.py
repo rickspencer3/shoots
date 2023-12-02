@@ -9,16 +9,23 @@ class ShootsServer(flight.FlightServerBase):
     def do_get(self, context, ticket):
         try:
             ticket_obj = json.loads(ticket.ticket.decode())
-            sql_query = ticket_obj["sql"]
-            table_name = ticket_obj["table"]
+            name = ticket_obj["name"]
+            file_name = f"{name}.parquet"
+
+            if "sql" in ticket_obj:
+                sql_query = ticket_obj["sql"]
+                ctx = SessionContext()
+                ctx.register_parquet(name, file_name)
+                
+                result = ctx.sql(sql_query)
+                table = result.to_arrow_table()
+                
+                return flight.RecordBatchStream(table)
             
-            ctx = SessionContext()
-            ctx.register_parquet(table_name, f"{table_name}.parquet")
+            else:
+                table = pq.read_table(file_name)
+                return flight.RecordBatchStream(table)
             
-            result = ctx.sql(sql_query)
-            table = result.to_arrow_table()
-            
-            return flight.RecordBatchStream(table)
         except Exception as e:
             print(e)
     
@@ -38,11 +45,6 @@ class ShootsServer(flight.FlightServerBase):
             pq.write_table(data_table, file_path)
         except Exception as e:
             print(e)
-        
-    def do_action(self, context, action):
-        bytes = json.dumps({"action":action.type}).encode()
-        result = flight.Result(bytes)
-        return [result]
 
 def run_flight_server():
     location = flight.Location.for_grpc_tcp("localhost", 8081)

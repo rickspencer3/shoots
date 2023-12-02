@@ -2,8 +2,9 @@ from pydantic import BaseModel, ValidationError, validator
 from pydantic_settings import BaseSettings
 from typing import Optional
 import pyarrow as pa
-from pyarrow.flight import FlightDescriptor, FlightClient
+from pyarrow.flight import FlightDescriptor, FlightClient, Ticket
 import pandas as pd
+import json
 
 class ClientConfig(BaseSettings):
     host: str
@@ -21,11 +22,21 @@ class PutRequest(BaseModel):
         if not isinstance(v, pd.DataFrame):
             raise ValueError('table must be a pandas DataFrame')
         return v
-    
+
+class GetRequest(BaseModel):
+    name: str
+    sql: Optional[str] = None
+
+    @validator('name')
+    def validate_name(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError('name must be a non-empty string')
+        return v
+
 class ShootsClient:
     def __init__(self, host: str, port: int):
         try:
-            config = ClientConfig(host=host, port=port) #validate input
+            config = ClientConfig(host=host, port=port)
             self.client = FlightClient(f"grpc://{config.host}:{config.port}")
         except ValidationError as e:
             print(f"Configuration error: {e}")
@@ -33,13 +44,25 @@ class ShootsClient:
 
     def put(self, name: str, dataframe: pd.DataFrame):
         try:
-            PutRequest(dataframe=dataframe, name=name) #validate input
-            descriptor = FlightDescriptor.for_path(name)
-            table = pa.Table.from_pandas(dataframe)
+            req = PutRequest(dataframe=dataframe, name=name)
+            descriptor = FlightDescriptor.for_path(req.name)
+            table = pa.Table.from_pandas(req.dataframe)
             writer, _ = self.client.do_put(descriptor, table.schema)
             writer.write_table(table)
         except ValidationError as e:
             print(f"Validation error: {e}")
 
-    def get():
-        pass
+    def get(self, name: str, sql: Optional[str] = None):
+        try:
+            req = GetRequest(name=name, sql=sql)
+            ticket_data = {"name":req.name}
+            if sql is not None:
+                ticket_data["sql"] = req.sql
+
+            ticket_bytes = json.dumps(ticket_data)
+            ticket = Ticket(ticket_bytes)
+            reader = self.client.do_get(ticket)
+            return reader.read_all().to_pandas()
+        
+        except ValidationError as e:
+            print(f"Validation error: {e}")
