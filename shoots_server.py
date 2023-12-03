@@ -45,8 +45,8 @@ class ShootsServer(flight.FlightServerBase):
                 data_table = pa.concat_tables([data_table, existing_table])
                 pq.write_table(data_table, file_path)
             
-            if(mode != "ignore"):
-                pq.write_table(data_table, file_path)
+            elif(mode == "ignore"):
+                raise flight.FlightServerError(f"{name} exists. Set PutMode to APPEND or REPLACE")
         else:
             pq.write_table(data_table, file_path)
 

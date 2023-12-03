@@ -2,7 +2,7 @@ from pydantic import BaseModel, ValidationError, validator
 from pydantic_settings import BaseSettings
 from typing import Optional
 import pyarrow as pa
-from pyarrow.flight import FlightDescriptor, FlightClient, Ticket, Action
+from pyarrow.flight import FlightDescriptor, FlightClient, Ticket, Action, FlightServerError
 import pandas as pd
 import json
 from enum import Enum
@@ -28,7 +28,7 @@ class DeleteRequest(BaseModel):
 class PutRequest(BaseModel):
     dataframe: pd.DataFrame
     name: str
-    mode: PutMode = PutMode.IGNORE
+    mode: PutMode = PutMode.APPEND
 
     class Config:
         arbitrary_types_allowed = True
@@ -59,18 +59,16 @@ class ShootsClient:
             raise
 
     def put(self, name: str, dataframe: pd.DataFrame, mode: PutMode = PutMode.IGNORE):
-        
         try:
             req = PutRequest(dataframe=dataframe, name=name, mode=mode)
 
             command = json.dumps({"name": req.name, "mode": req.mode.value}).encode()
             descriptor = FlightDescriptor.for_command(command)
             table = pa.Table.from_pandas(req.dataframe)
-            try:
-                writer, _ = self.client.do_put(descriptor, table.schema)
-                writer.write_table(table)
-            except Exception as e:
-                print(e)
+
+            writer, _ = self.client.do_put(descriptor, table.schema)
+            writer.write_table(table)
+
         except ValidationError as e:
             print(f"Validation error: {e}")
 
