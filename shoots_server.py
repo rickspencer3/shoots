@@ -45,11 +45,11 @@ class ShootsServer(flight.FlightServerBase):
                 data_table = pa.concat_tables([data_table, existing_table])
                 pq.write_table(data_table, file_path)
             
-            elif(mode == "ignore"):
-                raise flight.FlightServerError(f"{name} exists. Set PutMode to APPEND or REPLACE")
+            elif(mode == "error"):
+                raise flight.FlightServerError(f"File {name} Exists", extra_info="File Exists")
         else:
             pq.write_table(data_table, file_path)
-
+        
     def do_action(self, context, action):
         action, data = action.type, action.body.to_pybytes().decode()
         data = json.loads(data)
