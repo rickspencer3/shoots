@@ -89,7 +89,16 @@ class ShootsClient:
         
         except ValidationError as e:
             print(f"Validation error: {e}")
-    
+
+    def list(self):
+        action = Action("list",json.dumps({}).encode())
+        result = self.client.do_action(action)
+        list_string = None
+        for r in result:
+            list_string = r.body.to_pybytes().decode()
+        return json.loads(list_string)
+        
+
     def delete(self, name: str):
         action_description = json.dumps({"name":name}).encode()
         action = Action("delete",action_description)

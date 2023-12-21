@@ -4,6 +4,7 @@ from pyarrow import flight
 import pyarrow.parquet as pq
 from datafusion import SessionContext
 import json
+from glob import glob
 
 class ShootsServer(flight.FlightServerBase):
     def do_get(self, context, ticket):
@@ -27,7 +28,7 @@ class ShootsServer(flight.FlightServerBase):
                 return flight.RecordBatchStream(table)
             
         except Exception as e:
-            print(e)
+            raise flight.FlightServerError(extra_info=str(e))
     
     def do_put(self, context, descriptor, reader, writer):
         command = json.loads(descriptor.command.decode())
@@ -53,11 +54,21 @@ class ShootsServer(flight.FlightServerBase):
     def do_action(self, context, action):
         action, data = action.type, action.body.to_pybytes().decode()
         data = json.loads(data)
+
         if action == "delete":
             return self._delete(data)
         if action == "list":
-            pass
+            return self._list()
 
+    def _list(self):
+        pattern = "*.parquet"
+        file_paths = glob(pattern)
+        filenames = [os.path.splitext(os.path.basename(path))[0] for path in file_paths]
+
+        bytes = json.dumps(filenames).encode()
+        result = flight.Result(bytes)
+        return [result]
+    
     def _delete(self, data):
         file_path = f"{data['name']}.parquet"
             
