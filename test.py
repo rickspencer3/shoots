@@ -63,13 +63,15 @@ class TestClient(unittest.TestCase):
     def test_list(self):
         self.client.put("test1",self.dataframe0,mode=PutMode.REPLACE)
         self.client.put("test2",self.dataframe0,mode=PutMode.REPLACE)
-
+        
         files_count = len(self.client.list())
-        print(files_count)
+        
         try:
             self.assertEqual(files_count, 2)
         except:
-            pass
+            self.client.delete("test1")
+            self.client.delete("test2")
+            raise
         self.client.delete("test1")
         self.client.delete("test2")
 

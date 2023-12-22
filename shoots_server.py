@@ -79,14 +79,16 @@ class ShootsServer(flight.FlightServerBase):
 
     def _list(self, data):
         bucket = data["bucket"]
-        pattern = "*.parquet"
-        if bucket:
-            pattern = f"{bucket}/*.parquet"
+        bucket_path = None
+        if bucket: 
+            bucket_path = os.path.join(self.bucket_dir, bucket)
+        else:
+            bucket_path = self.bucket_dir
+        all_files = os.listdir(bucket_path)
+        parquet_files = [filename for filename in all_files if filename.endswith('.parquet')]
+        df_names = [filename.replace('.parquet', '') for filename in parquet_files]
         
-        file_paths = glob(pattern)
-        filenames = [os.path.splitext(os.path.basename(path))[0] for path in file_paths]
-
-        bytes = json.dumps(filenames).encode()
+        bytes = json.dumps(df_names).encode()
         result = flight.Result(bytes)
         return [result]
     
