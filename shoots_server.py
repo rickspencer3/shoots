@@ -7,12 +7,12 @@ import json
 from glob import glob
 
 class ShootsServer(flight.FlightServerBase):
+    bucket_dir = "buckets"
     def do_get(self, context, ticket):
         try:
             ticket_obj = json.loads(ticket.ticket.decode())
             name = ticket_obj["name"]
-            file_name = f"{name}.parquet"
-
+            file_name = self._create_file_path(name)
             if "sql" in ticket_obj:
                 sql_query = ticket_obj["sql"]
                 ctx = SessionContext()
@@ -53,18 +53,25 @@ class ShootsServer(flight.FlightServerBase):
         else:
             pq.write_table(data_table, file_path) 
 
-    def _create_file_path(self, name, bucket):
-        if bucket:
-            os.makedirs(bucket, exist_ok=True) 
-            return os.path.join(bucket, name)
+    def _create_file_path(self, name, bucket=None):
+        bucket_path = None
+        if bucket: 
+            bucket_path = os.path.join(self.bucket_dir, bucket)
         else:
-            return f"{name}.parquet"
+            bucket_path = self.bucket_dir
+        os.makedirs(bucket_path, exist_ok=True)
+
+        file_name = f"{name}.parquet"
+
+        file_path = os.path.join(bucket_path, file_name)
+        
+        return file_path
            
 
     def do_action(self, context, action):
         action, data = action.type, action.body.to_pybytes().decode()
         data = json.loads(data)
-
+        print(action)
         if action == "delete":
             return self._delete(data)
         if action == "list":
@@ -80,8 +87,8 @@ class ShootsServer(flight.FlightServerBase):
         return [result]
     
     def _delete(self, data):
-        file_path = f"{data['name']}.parquet"
-            
+        file_path = self._create_file_path(data["name"])
+
         msg = f"{data['name']} deleted succesfully"
         success = True
         try:
