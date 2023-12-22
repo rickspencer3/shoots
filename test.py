@@ -52,6 +52,13 @@ class TestClient(unittest.TestCase):
         res = self.client.get("test1", sql)
         self.assertEqual(res.shape[0],1)
         self.client.delete("test1")
-
+    
+    def test_read_write_to_bucket(self):
+        bucket = "test_bucket"
+        self.client.put("test1",self.dataframe0,mode=PutMode.REPLACE,bucket=bucket)
+        res = self.client.get("test1",bucket=bucket)
+        self.assertEqual(res.shape[0],1)
+        self.client.delete("test1", bucket=bucket)
+        
 if __name__ == '__main__':
     unittest.main()

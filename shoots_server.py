@@ -12,7 +12,8 @@ class ShootsServer(flight.FlightServerBase):
         try:
             ticket_obj = json.loads(ticket.ticket.decode())
             name = ticket_obj["name"]
-            file_name = self._create_file_path(name)
+            bucket = ticket_obj["bucket"]
+            file_name = self._create_file_path(name, bucket)
             if "sql" in ticket_obj:
                 sql_query = ticket_obj["sql"]
                 ctx = SessionContext()
@@ -71,7 +72,6 @@ class ShootsServer(flight.FlightServerBase):
     def do_action(self, context, action):
         action, data = action.type, action.body.to_pybytes().decode()
         data = json.loads(data)
-        print(action)
         if action == "delete":
             return self._delete(data)
         if action == "list":
@@ -87,7 +87,9 @@ class ShootsServer(flight.FlightServerBase):
         return [result]
     
     def _delete(self, data):
-        file_path = self._create_file_path(data["name"])
+        name = data["name"]
+        bucket = data["bucket"]
+        file_path = self._create_file_path(name, bucket)
 
         msg = f"{data['name']} deleted succesfully"
         success = True

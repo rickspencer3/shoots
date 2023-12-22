@@ -43,6 +43,7 @@ class PutRequest(BaseModel):
 class GetRequest(BaseModel):
     name: str
     sql: Optional[str] = None
+    bucket: Optional[str] = None
 
     @validator('name')
     def validate_name(cls, v):
@@ -82,10 +83,10 @@ class ShootsClient:
         except ValidationError as e:
             print(f"Validation error: {e}")
 
-    def get(self, name: str, sql: Optional[str] = None):
+    def get(self, name: str, sql: Optional[str] = None, bucket: Optional[str] = None):
         try:
-            req = GetRequest(name=name, sql=sql)
-            ticket_data = {"name":req.name}
+            req = GetRequest(name=name, sql=sql, bucket=bucket)
+            ticket_data = {"name":req.name, "bucket":req.bucket}
             if sql is not None:
                 ticket_data["sql"] = req.sql
 
@@ -106,8 +107,8 @@ class ShootsClient:
         return json.loads(list_string)
         
 
-    def delete(self, name: str):
-        action_description = json.dumps({"name":name}).encode()
+    def delete(self, name: str, bucket: Optional[str] = None):
+        action_description = json.dumps({"name":name, "bucket":bucket}).encode()
         action = Action("delete",action_description)
         result = self.client.do_action(action)
 
