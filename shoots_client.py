@@ -40,6 +40,9 @@ class PutRequest(BaseModel):
             raise ValueError('table must be a pandas DataFrame')
         return v
 
+class ListRequest(BaseModel):
+    bucket: Optional[str] = None
+
 class GetRequest(BaseModel):
     name: str
     sql: Optional[str] = None
@@ -98,8 +101,9 @@ class ShootsClient:
         except ValidationError as e:
             print(f"Validation error: {e}")
 
-    def list(self):
-        action = Action("list",json.dumps({}).encode())
+    def list(self, bucket: Optional[str] = None):
+        req = ListRequest(bucket=bucket)
+        action = Action("list",json.dumps({"bucket":bucket}).encode())
         result = self.client.do_action(action)
         list_string = None
         for r in result:

@@ -75,10 +75,14 @@ class ShootsServer(flight.FlightServerBase):
         if action == "delete":
             return self._delete(data)
         if action == "list":
-            return self._list()
+            return self._list(data)
 
-    def _list(self):
+    def _list(self, data):
+        bucket = data["bucket"]
         pattern = "*.parquet"
+        if bucket:
+            pattern = f"{bucket}/*.parquet"
+        
         file_paths = glob(pattern)
         filenames = [os.path.splitext(os.path.basename(path))[0] for path in file_paths]
 

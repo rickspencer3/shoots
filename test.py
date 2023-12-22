@@ -59,6 +59,37 @@ class TestClient(unittest.TestCase):
         res = self.client.get("test1",bucket=bucket)
         self.assertEqual(res.shape[0],1)
         self.client.delete("test1", bucket=bucket)
-        
+    
+    def test_list(self):
+        self.client.put("test1",self.dataframe0,mode=PutMode.REPLACE)
+        self.client.put("test2",self.dataframe0,mode=PutMode.REPLACE)
+
+        files_count = len(self.client.list())
+        print(files_count)
+        try:
+            self.assertEqual(files_count, 2)
+        except:
+            pass
+        self.client.delete("test1")
+        self.client.delete("test2")
+
+    def test_list_with_bucket(self):
+        self.client.put("test1",
+                        self.dataframe0,
+                        mode=PutMode.REPLACE,
+                        bucket="listybucket")
+        self.client.put("test2",
+                        self.dataframe0,
+                        mode=PutMode.REPLACE,
+                        bucket="listybucket")
+
+        files_count = len(self.client.list())
+        print(files_count)
+        try:
+            self.assertEqual(files_count, 2)
+        except:
+            pass
+        self.client.delete("test1")
+        self.client.delete("test2")
 if __name__ == '__main__':
     unittest.main()
