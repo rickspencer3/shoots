@@ -83,13 +83,20 @@ class TestClient(unittest.TestCase):
                         mode=PutMode.REPLACE,
                         bucket="listybucket")
 
-        files_count = len(self.client.list())
-        print(files_count)
+        files = self.client.list()
+        files_count = files
+        
         try:
             self.assertEqual(files_count, 2)
+            self.assertIn(files, "test1")
+            self.assertIn(files, "test2")
         except:
             pass
-        self.client.delete("test1")
-        self.client.delete("test2")
+        
+        self.client.delete("test1",
+                        bucket="listybucket")
+        self.client.delete("test2",
+                        bucket="listybucket")
+        
 if __name__ == '__main__':
     unittest.main()
