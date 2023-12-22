@@ -37,9 +37,9 @@ class ShootsServer(flight.FlightServerBase):
         name = command["name"]
         mode = command["mode"]
         bucket = command["bucket"]
-        
+
         data_table = reader.read_all()
-        file_path = self._file_path(name, bucket)
+        file_path = self._create_file_path(name, bucket)
         if os.path.exists(file_path):
             if mode == "append":
                 existing_table = pq.read_table(file_path)
@@ -53,8 +53,9 @@ class ShootsServer(flight.FlightServerBase):
         else:
             pq.write_table(data_table, file_path) 
 
-    def _file_path(self, name, bucket):
+    def _create_file_path(self, name, bucket):
         if bucket:
+            os.makedirs(bucket, exist_ok=True) 
             return os.path.join(bucket, name)
         else:
             return f"{name}.parquet"
