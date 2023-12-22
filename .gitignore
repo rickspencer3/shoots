@@ -1,3 +1,4 @@
 *.parquet
 __pycache__/
 scratch.py
+buckets
