@@ -39,7 +39,6 @@ class ShootsServer(flight.FlightServerBase):
 
         data_table = reader.read_all()
         file_path = f"{name}.parquet"
-        
         if os.path.exists(file_path):
             if mode == "append":
                 existing_table = pq.read_table(file_path)
@@ -48,9 +47,11 @@ class ShootsServer(flight.FlightServerBase):
             
             elif(mode == "error"):
                 raise flight.FlightServerError(f"File {name} Exists", extra_info="File Exists")
+            else:
+                pq.write_table(data_table, file_path)
         else:
-            pq.write_table(data_table, file_path)
-        
+            pq.write_table(data_table, file_path)      
+             
     def do_action(self, context, action):
         action, data = action.type, action.body.to_pybytes().decode()
         data = json.loads(data)
