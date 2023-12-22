@@ -29,6 +29,7 @@ class PutRequest(BaseModel):
     dataframe: pd.DataFrame
     name: str
     mode: PutMode = PutMode.APPEND
+    bucket: Optional[str] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -58,12 +59,18 @@ class ShootsClient:
             print(f"Configuration error: {e}")
             raise
 
-    def put(self, name: str, dataframe: pd.DataFrame, mode: PutMode = PutMode.ERROR):
-        
+    def put(self, 
+            name: str, 
+            dataframe: pd.DataFrame, 
+            mode: PutMode = PutMode.ERROR,
+            bucket: Optional[str] = None):
         try:
-            req = PutRequest(dataframe=dataframe, name=name, mode=mode)
+            req = PutRequest(dataframe=dataframe, name=name, mode=mode, bucket=bucket)
 
-            command = json.dumps({"name": req.name, "mode": req.mode.value}).encode()
+            command = json.dumps({"name": req.name,
+                                 "mode": req.mode.value,
+                                 "bucket":bucket}).encode()
+            
             descriptor = FlightDescriptor.for_command(command)
             table = pa.Table.from_pandas(req.dataframe)
 
