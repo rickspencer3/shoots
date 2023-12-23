@@ -1,5 +1,5 @@
 from shoots_client import ShootsClient
-from shoots_client import PutMode
+from shoots_client import PutMode, BucketDeleteMode
 import pandas as pd
 from pyarrow.flight import FlightServerError
 
@@ -59,12 +59,18 @@ class TestClient(unittest.TestCase):
         res = self.client.get("test1",bucket=bucket)
         self.assertEqual(res.shape[0],1)
         self.client.delete("test1", bucket=bucket)
-    
-    def test_list_buckets(self):
+
+    def test_list_and_delete_bucket(self):
         bucket = "testing_bucket"
         self.client.put("test1",self.dataframe0,mode=PutMode.REPLACE,bucket=bucket)
         buckets = self.client.buckets()
-        self.assertIn("testing_bucket", buckets)
+        self.assertIn(bucket, buckets)
+        with self.assertRaises(FlightServerError):
+            self.client.delete_bucket("test1", mode=BucketDeleteMode.ERROR)
+            
+        self.client.delete_bucket(bucket, mode=BucketDeleteMode.DELETE_CONTENTS)
+        buckets = self.client.buckets()
+        self.assertNotIn(bucket, buckets)
 
     def test_list(self):
         self.client.put("test1",self.dataframe0,mode=PutMode.REPLACE)

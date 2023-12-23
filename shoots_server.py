@@ -5,6 +5,7 @@ import pyarrow.parquet as pq
 from datafusion import SessionContext
 import json
 from glob import glob
+import shutil
 
 class ShootsServer(flight.FlightServerBase):
     bucket_dir = "buckets"
@@ -78,10 +79,32 @@ class ShootsServer(flight.FlightServerBase):
             return self._list(data)
         if action == "buckets":
             return self._buckets()
+        if action == "delete_bucket":
+            return self._delete_bucket(data)
+        
+    def _delete_bucket(self, data):
+        bucket = data["name"]
+        mode = data["mode"]
+        print(bucket, mode)
+        bucket_path = os.path.join(self.bucket_dir, bucket)
+        if not os.path.isdir(bucket_path):
+            raise flight.FlightServerError(f"No such bucket: {bucket}",
+                                            extra_info="No Such Bucket")
+        
+        bucket_is_empty = not os.listdir(bucket_path)
+        if not bucket_is_empty:
+            if mode == "error":
+                raise flight.FlightServerError(f"Bucket Not Empty: {bucket}",
+                                                extra_info="Bucket Not Empty")
+            elif mode == "delete":
+                shutil.rmtree(bucket_path)
+        else: 
+            os.rmdir(bucket_path) 
+        result_data = {"message":f"bucket {bucket} deleted"}
+        return self._flight_result_from_dict(result_data)
 
     def _buckets(self):
         entries = os.listdir(self.bucket_dir)
-    
         buckets = [entry for entry in entries if os.path.isdir(os.path.join(self.bucket_dir, entry))]
         return self._list_to_flight_result(buckets)
 
@@ -122,8 +145,12 @@ class ShootsServer(flight.FlightServerBase):
         except OSError as e:
             msg = f"Error deleting file {file_path}: {e}"
             success = False
-            
-        bytes = json.dumps({"success":success, "message":msg}).encode()
+        
+        result_data = {"success":success, "message":msg}
+        return self._flight_result_from_dict(result_data)
+
+    def _flight_result_from_dict(self, result_data):
+        bytes = json.dumps(result_data).encode()
         result = flight.Result(bytes)
         return [result]
         

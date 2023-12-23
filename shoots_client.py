@@ -12,6 +12,10 @@ class PutMode(Enum):
     APPEND = "append"
     ERROR = "error"
 
+class BucketDeleteMode(Enum):
+    DELETE_CONTENTS = "delete"
+    ERROR = "error"
+
 class ClientConfig(BaseSettings):
     host: str
     port: int
@@ -24,7 +28,11 @@ class DeleteRequest(BaseModel):
         if not v or not isinstance(v, str):
             raise ValueError('name must be a non-empty string')
         return v
-    
+
+class DeleteBucketRequest(BaseModel):
+    name: str
+    mode: BucketDeleteMode = BucketDeleteMode.ERROR
+
 class PutRequest(BaseModel):
     dataframe: pd.DataFrame
     name: str
@@ -78,7 +86,6 @@ class ShootsClient:
             descriptor = FlightDescriptor.for_command(command)
             table = pa.Table.from_pandas(req.dataframe)
 
-
             writer, _ = self.client.do_put(descriptor, table.schema)
             writer.write_table(table)
             writer.close()
@@ -107,7 +114,15 @@ class ShootsClient:
         action = Action("buckets",bytes)
         result = self.client.do_action(action)
         return self._flight_result_to_list(result)
-            
+    
+    def delete_bucket(self, name: str, mode: BucketDeleteMode = BucketDeleteMode.ERROR):
+        req = DeleteBucketRequest(name=name, mode=mode)
+        action_obj = {"name":req.name, "mode":req.mode.value}
+        bytes = json.dumps(action_obj).encode()
+        action = Action("delete_bucket",bytes)
+        result = self.client.do_action(action)
+        return self._flight_result_to_string(result)       
+
     def list(self, bucket: Optional[str] = None):
         req = ListRequest(bucket=bucket)
         action_obj = {"bucket":bucket}
@@ -127,6 +142,9 @@ class ShootsClient:
         action = Action("delete",action_description)
         result = self.client.do_action(action)
 
+        return self._flight_result_to_string(result)
+
+    def _flight_result_to_string(self, result):
         msg = ""
         for r in result:
             msg += r.body.to_pybytes().decode() + "\n"
