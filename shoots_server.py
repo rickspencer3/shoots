@@ -76,6 +76,19 @@ class ShootsServer(flight.FlightServerBase):
             return self._delete(data)
         if action == "list":
             return self._list(data)
+        if action == "buckets":
+            return self._buckets()
+
+    def _buckets(self):
+        entries = os.listdir(self.bucket_dir)
+    
+        buckets = [entry for entry in entries if os.path.isdir(os.path.join(self.bucket_dir, entry))]
+        return self._list_to_flight_result(buckets)
+
+    def _list_to_flight_result(self, buckets):
+        bytes = json.dumps(buckets).encode()
+        result = flight.Result(bytes)
+        return [result]
 
     def _list(self, data):
         bucket = data["bucket"]
@@ -84,14 +97,12 @@ class ShootsServer(flight.FlightServerBase):
             bucket_path = os.path.join(self.bucket_dir, bucket)
         else:
             bucket_path = self.bucket_dir
-            
+
         all_files = os.listdir(bucket_path)
         parquet_files = [filename for filename in all_files if filename.endswith('.parquet')]
         df_names = [filename.replace('.parquet', '') for filename in parquet_files]
         
-        bytes = json.dumps(df_names).encode()
-        result = flight.Result(bytes)
-        return [result]
+        return self._list_to_flight_result(df_names)
     
     def _delete(self, data):
         name = data["name"]

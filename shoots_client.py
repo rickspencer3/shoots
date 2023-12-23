@@ -101,17 +101,26 @@ class ShootsClient:
         except ValidationError as e:
             print(f"Validation error: {e}")
 
+    def buckets(self):
+        action_obj = {}
+        bytes = json.dumps(action_obj).encode()
+        action = Action("buckets",bytes)
+        result = self.client.do_action(action)
+        return self._flight_result_to_list(result)
+            
     def list(self, bucket: Optional[str] = None):
         req = ListRequest(bucket=bucket)
         action_obj = {"bucket":bucket}
         bytes = json.dumps(action_obj).encode()
         action = Action("list",bytes)
         result = self.client.do_action(action)
+        return self._flight_result_to_list(result)
+
+    def _flight_result_to_list(self, result):
         list_string = None
         for r in result:
             list_string = r.body.to_pybytes().decode()
-        return json.loads(list_string)
-        
+        return json.loads(list_string)      
 
     def delete(self, name: str, bucket: Optional[str] = None):
         action_description = json.dumps({"name":name, "bucket":bucket}).encode()

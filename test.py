@@ -60,6 +60,12 @@ class TestClient(unittest.TestCase):
         self.assertEqual(res.shape[0],1)
         self.client.delete("test1", bucket=bucket)
     
+    def test_list_buckets(self):
+        bucket = "testing_bucket"
+        self.client.put("test1",self.dataframe0,mode=PutMode.REPLACE,bucket=bucket)
+        buckets = self.client.buckets()
+        self.assertIn("testing_bucket", buckets)
+
     def test_list(self):
         self.client.put("test1",self.dataframe0,mode=PutMode.REPLACE)
         self.client.put("test2",self.dataframe0,mode=PutMode.REPLACE)
