@@ -54,7 +54,7 @@ print(df1)
 Shoots use [Apache DataFusion](https://arrow.apache.org/datafusion/) for executing SQL. The [DataFusion dialect is well document](https://arrow.apache.org/datafusion/user-guide/sql/index.html).
 
 ## listing dataframes
-You can retrieve a list of dataframes and their schemas, using the list() method.
+You can retrieve a list of dataframes and their schemas, using the ```list()``` method.
 
 ```python
 results = shoots.list()
