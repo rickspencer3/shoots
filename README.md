@@ -120,6 +120,7 @@ buckets after deletion:
 # Roadmap
 I intend to work on the following in the coming weeks, in no particular order:
 
+- [ ] add a runtime option for the root bucket directory, use it for testing
 - [ ] pip packaging
 - [ ] pattern matching for ```list()```
 - [ ] downsampling via sql on the server
