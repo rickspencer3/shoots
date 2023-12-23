@@ -9,10 +9,10 @@ Shoots is very very early software, but is in a usable state.
 # shoots_server
 The server tries to be a fairly faithful Apache Flight Server, meaning that you should be able to use the Apache Arrow Flight client libraries directly. It is entirely built upon the upstream [Apache Arrow project](https://arrow.apache.org/).
 
-Under the hood, the server receives and server pandas dataframes, storing thenm on disk in Apache Parquet forma. 
+Under the hood, the server receives and serves pandas dataframes, storing thenm on disk in [Apache Parquet](https://parquet.apache.org/) format. However, shoots is designed so that, as a user, you don't need to know about the underlying storage formats and libraries.
 
 # shoots_client
-The client pieces wrap the Apache FlightClient to offer an interface for pandas developers, abstracting away the Apache Arrow and Flight concepts.
+The client pieces wrap the [Apache FlightClient](https://arrow.apache.org/docs/python/generated/pyarrow.flight.FlightClient.html) to offer an interface for pandas developers, abstracting away the Apache Arrow and Flight concepts.
 
 # usage
 ## run the server
@@ -26,6 +26,7 @@ or
 ```bash
 python3 shoots_server.py
 ```
+
 ## storing a dataframe
 Use the client library to create an instance of the client, and "put" a dataframe. Assuming you are running locally:
 ```python
@@ -115,3 +116,12 @@ buckets before deletion:
 buckets after deletion:
 ['foo']
 ```
+
+# Roadmap
+I intend to work on the following in the coming weeks:
+
+- [ ] pip packaging
+- [ ] pattern matching for ```list()```
+- [ ] downsampling via sql on the server
+- [ ] combining dataframes on the server
+- [ ] compressing and cleaning dataframes on teh server
