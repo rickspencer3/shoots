@@ -4,7 +4,7 @@ Shoots is entirely written in Python and is designed for Python users.
 
 Shoots comes in 2 parts, a server and a client library.
 
-Shoots is very very early software, but is in a usable state.
+Shoots is very early software, but is in a usable state. It is stored on [github](https://github.com/rickspencer3/shoots). Issues and contributions welcome.
 
 # shoots_server
 The server tries to be a fairly faithful Apache Flight Server, meaning that you should be able to use the Apache Arrow Flight client libraries directly. It is entirely built upon the upstream [Apache Arrow project](https://arrow.apache.org/).
@@ -118,10 +118,11 @@ buckets after deletion:
 ```
 
 # Roadmap
-I intend to work on the following in the coming weeks:
+I intend to work on the following in the coming weeks, in no particular order:
 
 - [ ] pip packaging
 - [ ] pattern matching for ```list()```
 - [ ] downsampling via sql on the server
 - [ ] combining dataframes on the server
 - [ ] compressing and cleaning dataframes on teh server
+- [ ] authentication
