@@ -52,7 +52,7 @@ df1 = shoots.get("sensor_data", sql=sql)
 print(df1)
 ```
 
-Shoots use [Apache DataFusion](https://arrow.apache.org/datafusion/) for executing SQL. The [DataFusion dialect is well document](https://arrow.apache.org/datafusion/user-guide/sql/index.html).
+Shoots use [Apache DataFusion](https://arrow.apache.org/datafusion/) for executing SQL. The [DataFusion dialect](https://arrow.apache.org/datafusion/user-guide/sql/index.html) is well document.
 
 ## listing dataframes
 You can retrieve a list of dataframes and their schemas, using the ```list()``` method.
@@ -100,7 +100,7 @@ buckets:
 ```
 
 ### deleting buckets
-You can delete buckets with the ```delete_bucket()``` method. You can force a deletion of all contents using ```BucketDeleteMode.DELETE_CONTENTS```:
+You can delete buckets with the ```delete_bucket()``` method. You can force a deletion of all the dataframes contained in a bucket by using ```BucketDeleteMode.DELETE_CONTENTS```, otherwise you need to delete all of the dataframes first.:
 
 ```python
 print("buckets before deletion:")
@@ -126,5 +126,6 @@ I intend to work on the following in the coming weeks, in no particular order:
 - [ ] pattern matching for ```list()```
 - [ ] downsampling via sql on the server
 - [ ] combining dataframes on the server
-- [ ] compressing and cleaning dataframes on teh server
+- [ ] compressing and cleaning dataframes on the server
 - [ ] authentication
+- [ ] UI with SQL tree view browser and editor
