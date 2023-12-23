@@ -50,6 +50,7 @@ class PutRequest(BaseModel):
 
 class ListRequest(BaseModel):
     bucket: Optional[str] = None
+    regex: Optional[str] = None
 
 class GetRequest(BaseModel):
     name: str
@@ -123,13 +124,17 @@ class ShootsClient:
         result = self.client.do_action(action)
         return self._flight_result_to_string(result)       
 
-    def list(self, bucket: Optional[str] = None):
-        req = ListRequest(bucket=bucket)
-        action_obj = {"bucket":bucket}
-        bytes = json.dumps(action_obj).encode()
-        action = Action("list",bytes)
-        result = self.client.do_action(action)
-        return self._flight_result_to_list(result)
+    def list(self, bucket: Optional[str] = None, regex: Optional[str] = None):
+        descriptor_data = {"bucket":bucket, "regex":regex}
+        descriptor_bytes = json.dumps(descriptor_data).encode()
+        return self.client.list_flights(criteria=descriptor_bytes)
+        
+        # req = ListRequest(bucket=bucket)
+        # action_obj = {"bucket":bucket}
+        # bytes = json.dumps(action_obj).encode()
+        # action = Action("list",bytes)
+        # result = self.client.do_action(action)
+        # return self._flight_result_to_list(result)
 
     def _flight_result_to_list(self, result):
         list_string = None

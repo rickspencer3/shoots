@@ -55,6 +55,19 @@ class ShootsServer(flight.FlightServerBase):
         else:
             pq.write_table(data_table, file_path) 
 
+    def list_flights(self, context, criteria):
+        self.datasets = {
+            'dataset1': pa.schema([('column1', pa.int32()), ('column2', pa.string())]),
+            'dataset2': pa.schema([('columnA', pa.float64()), ('columnB', pa.bool_())])
+        }
+        for dataset_name, schema in self.datasets.items():
+            descriptor = flight.FlightDescriptor.for_path(dataset_name)
+            yield flight.FlightInfo(schema,
+                                    descriptor,
+                                    [],  # No endpoints, replace with actual data locations if applicable
+                                    -1,  # Size is unknown
+                                    -1)  # Total records is unknown
+
     def _create_file_path(self, name, bucket=None):
         bucket_path = None
         if bucket: 
@@ -69,7 +82,6 @@ class ShootsServer(flight.FlightServerBase):
         
         return file_path
            
-
     def do_action(self, context, action):
         action, data = action.type, action.body.to_pybytes().decode()
         data = json.loads(data)
@@ -85,7 +97,6 @@ class ShootsServer(flight.FlightServerBase):
     def _delete_bucket(self, data):
         bucket = data["name"]
         mode = data["mode"]
-        print(bucket, mode)
         bucket_path = os.path.join(self.bucket_dir, bucket)
         if not os.path.isdir(bucket_path):
             raise flight.FlightServerError(f"No such bucket: {bucket}",
