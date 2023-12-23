@@ -3,3 +3,4 @@ __pycache__/
 scratch.py
 buckets
 *.csv
+.vscode/
