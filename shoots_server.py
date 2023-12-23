@@ -84,6 +84,7 @@ class ShootsServer(flight.FlightServerBase):
             bucket_path = os.path.join(self.bucket_dir, bucket)
         else:
             bucket_path = self.bucket_dir
+            
         all_files = os.listdir(bucket_path)
         parquet_files = [filename for filename in all_files if filename.endswith('.parquet')]
         df_names = [filename.replace('.parquet', '') for filename in parquet_files]

@@ -85,15 +85,19 @@ class TestClient(unittest.TestCase):
                         mode=PutMode.REPLACE,
                         bucket="listybucket")
 
-        files = self.client.list()
-        files_count = files
+        files = self.client.list(bucket="listybucket")
+        files_count = len(files)
         
         try:
             self.assertEqual(files_count, 2)
-            self.assertIn(files, "test1")
-            self.assertIn(files, "test2")
+            self.assertIn("test1", files)
+            self.assertIn("test2", files)
         except:
-            pass
+            self.client.delete("test1",
+                        bucket="listybucket")
+            self.client.delete("test2",
+                        bucket="listybucket")
+            raise
         
         self.client.delete("test1",
                         bucket="listybucket")

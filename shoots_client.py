@@ -103,7 +103,9 @@ class ShootsClient:
 
     def list(self, bucket: Optional[str] = None):
         req = ListRequest(bucket=bucket)
-        action = Action("list",json.dumps({"bucket":bucket}).encode())
+        action_obj = {"bucket":bucket}
+        bytes = json.dumps(action_obj).encode()
+        action = Action("list",bytes)
         result = self.client.do_action(action)
         list_string = None
         for r in result:
