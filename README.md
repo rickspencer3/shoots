@@ -1,4 +1,4 @@
-Shoots is dataset storage server. Currently is supports pandas, but most likely I will add support for polars in the future.
+Shoots is dataframe storage server. Currently is supports pandas, but most likely I will add support for polars in the future.
 
 Shoots is entirely written in Python and is designed for Python users.
 
@@ -39,7 +39,7 @@ df = pd.read_csv('sensor_data.csv')
 
 shoots.put("sensor_data", dataframe=df, mode=PutMode.REPLACE)
 ```
-## retrieving data
+## retrieving a dataframe
 You can simply get a dataframe back by using its name:
 ```python
 df0 = shoots.get("sensor_data")
