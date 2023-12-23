@@ -67,7 +67,7 @@ class TestClient(unittest.TestCase):
         self.assertIn(bucket, buckets)
         with self.assertRaises(FlightServerError):
             self.client.delete_bucket("test1", mode=BucketDeleteMode.ERROR)
-            
+
         self.client.delete_bucket(bucket, mode=BucketDeleteMode.DELETE_CONTENTS)
         buckets = self.client.buckets()
         self.assertNotIn(bucket, buckets)
@@ -97,13 +97,15 @@ class TestClient(unittest.TestCase):
                         mode=PutMode.REPLACE,
                         bucket="listybucket")
 
-        files = self.client.list(bucket="listybucket")
-        files_count = len(files)
-        
+        datasets = self.client.list(bucket="listybucket")
+        files_count = len(datasets)
+        names = []
+        for dataset in datasets:
+            names.append(dataset["name"])
         try:
             self.assertEqual(files_count, 2)
-            self.assertIn("test1", files)
-            self.assertIn("test2", files)
+            self.assertIn("test1", names)
+            self.assertIn("test2", names)
         except:
             self.client.delete("test1",
                         bucket="listybucket")

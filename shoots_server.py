@@ -56,17 +56,25 @@ class ShootsServer(flight.FlightServerBase):
             pq.write_table(data_table, file_path) 
 
     def list_flights(self, context, criteria):
-        self.datasets = {
-            'dataset1': pa.schema([('column1', pa.int32()), ('column2', pa.string())]),
-            'dataset2': pa.schema([('columnA', pa.float64()), ('columnB', pa.bool_())])
-        }
-        for dataset_name, schema in self.datasets.items():
-            descriptor = flight.FlightDescriptor.for_path(dataset_name)
+        data_obj = json.loads(criteria.decode())
+        bucket = data_obj["bucket"]
+        regex = data_obj["regex"]
+        files = self._list_parquet_files(bucket)
+        for file in files:
+            file_path = os.path.join(self.bucket_dir, file)
+            if bucket:
+                file_path = os.path.join(self.bucket_dir, bucket, file)
+            parquet_file = pq.ParquetFile(file_path)
+            schema = parquet_file.schema.to_arrow_schema()
+            descriptor = flight.FlightDescriptor.for_path(file[:-8])
             yield flight.FlightInfo(schema,
-                                    descriptor,
-                                    [],  # No endpoints, replace with actual data locations if applicable
-                                    -1,  # Size is unknown
-                                    -1)  # Total records is unknown
+                            descriptor,
+                            [],  # No endpoints, replace with actual data locations if applicable
+                            parquet_file.metadata.num_rows,
+                            parquet_file.metadata.serialized_size)
+
+
+        
 
     def _create_file_path(self, name, bucket=None):
         bucket_path = None
@@ -88,7 +96,7 @@ class ShootsServer(flight.FlightServerBase):
         if action == "delete":
             return self._delete(data)
         if action == "list":
-            return self._list(data)
+            return self._list_parquet_files(data)
         if action == "buckets":
             return self._buckets()
         if action == "delete_bucket":
@@ -124,8 +132,7 @@ class ShootsServer(flight.FlightServerBase):
         result = flight.Result(bytes)
         return [result]
 
-    def _list(self, data):
-        bucket = data["bucket"]
+    def _list_parquet_files(self, bucket):
         bucket_path = None
         if bucket: 
             bucket_path = os.path.join(self.bucket_dir, bucket)
@@ -134,9 +141,8 @@ class ShootsServer(flight.FlightServerBase):
 
         all_files = os.listdir(bucket_path)
         parquet_files = [filename for filename in all_files if filename.endswith('.parquet')]
-        df_names = [filename.replace('.parquet', '') for filename in parquet_files]
         
-        return self._list_to_flight_result(df_names)
+        return parquet_files
     
     def _delete(self, data):
         name = data["name"]
