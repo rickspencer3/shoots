@@ -133,6 +133,13 @@ class ShootsClient:
             datasets.append({"name":flight.descriptor.path[0].decode(), "schema":flight.schema})
         return datasets
 
+    def shutdown(self):
+        action_description = json.dumps({}).encode()
+        action = Action("shutdown",action_description)
+        result = self.client.do_action(action)
+        for r in result:
+            print(r.body.to_pybytes().decode())
+
     def _flight_result_to_list(self, result):
         list_string = None
         for r in result:

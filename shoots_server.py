@@ -4,11 +4,16 @@ from pyarrow import flight
 import pyarrow.parquet as pq
 from datafusion import SessionContext
 import json
-from glob import glob
 import shutil
+import threading
+import argparse
 
 class ShootsServer(flight.FlightServerBase):
-    bucket_dir = "buckets"
+    def __init__(self, location, bucket_dir, *args, **kwargs):
+        self._location = location
+        self.bucket_dir = bucket_dir
+        super(ShootsServer, self).__init__(location, *args, **kwargs)
+
     def do_get(self, context, ticket):
         try:
             ticket_obj = json.loads(ticket.ticket.decode())
@@ -73,8 +78,22 @@ class ShootsServer(flight.FlightServerBase):
                             parquet_file.metadata.num_rows,
                             parquet_file.metadata.serialized_size)
 
-
-        
+    def do_action(self, context, action):
+        action, data = action.type, action.body.to_pybytes().decode()
+        data = json.loads(data)
+        if action == "delete":
+            return self._delete(data)
+        if action == "list":
+            return self._list_parquet_files(data)
+        if action == "buckets":
+            return self._buckets()
+        if action == "delete_bucket":
+            return self._delete_bucket(data)
+        if action == "shutdown":
+            shutdown_thread = threading.Thread(target=self.shutdown)
+            shutdown_thread.start()
+            print("Shutting down ...")
+            return self._list_to_flight_result(["shutdown command received"])
 
     def _create_file_path(self, name, bucket=None):
         bucket_path = None
@@ -89,18 +108,6 @@ class ShootsServer(flight.FlightServerBase):
         file_path = os.path.join(bucket_path, file_name)
         
         return file_path
-           
-    def do_action(self, context, action):
-        action, data = action.type, action.body.to_pybytes().decode()
-        data = json.loads(data)
-        if action == "delete":
-            return self._delete(data)
-        if action == "list":
-            return self._list_parquet_files(data)
-        if action == "buckets":
-            return self._buckets()
-        if action == "delete_bucket":
-            return self._delete_bucket(data)
         
     def _delete_bucket(self, data):
         bucket = data["name"]
@@ -138,7 +145,7 @@ class ShootsServer(flight.FlightServerBase):
             bucket_path = os.path.join(self.bucket_dir, bucket)
         else:
             bucket_path = self.bucket_dir
-
+            
         all_files = os.listdir(bucket_path)
         parquet_files = [filename for filename in all_files if filename.endswith('.parquet')]
         
@@ -168,12 +175,16 @@ class ShootsServer(flight.FlightServerBase):
         result = flight.Result(bytes)
         return [result]
         
-def run_flight_server():
-    location = flight.Location.for_grpc_tcp("localhost", 8081)
-    server = ShootsServer(location)
-
-    print("Starting Flight server on localhost:8081")
-    server.serve()
+    def run(self):
+        print(f"Starting Flight server on {self._location.uri.decode()}")
+        self.serve()
 
 if __name__ == "__main__":
-    run_flight_server()
+    parser = argparse.ArgumentParser(description='Starts the Shoots Flight Server.')
+    parser.add_argument('--port', type=int, default=8081, help='Port number to run the Flight server on.')
+    parser.add_argument('--bucket_dir', type=str, default='buckets', help='Path to the bucket directory.')
+
+    args = parser.parse_args()
+    location = flight.Location.for_grpc_tcp("localhost", args.port)
+    server = ShootsServer(location, bucket_dir=args.bucket_dir)
+    server.run()
