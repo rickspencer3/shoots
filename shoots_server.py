@@ -6,11 +6,12 @@ from datafusion import SessionContext
 import json
 import shutil
 import threading
+import argparse
 
 class ShootsServer(flight.FlightServerBase):
-    bucket_dir = "buckets"
-    def __init__(self, location, *args, **kwargs):
+    def __init__(self, location, bucket_dir, *args, **kwargs):
         self._location = location
+        self.bucket_dir = bucket_dir
         super(ShootsServer, self).__init__(location, *args, **kwargs)
 
     def do_get(self, context, ticket):
@@ -92,7 +93,7 @@ class ShootsServer(flight.FlightServerBase):
             shutdown_thread = threading.Thread(target=self.shutdown)
             shutdown_thread.start()
             print("Shutting down ...")
-            return self._list_to_flight_result(["shutdown command set"])
+            return self._list_to_flight_result(["shutdown command received"])
 
     def _create_file_path(self, name, bucket=None):
         bucket_path = None
@@ -175,10 +176,15 @@ class ShootsServer(flight.FlightServerBase):
         return [result]
         
     def run(self):
-        print("Starting Flight server on localhost:8081")
+        print(f"Starting Flight server on {self._location.uri.decode()}")
         self.serve()
 
 if __name__ == "__main__":
-    location = flight.Location.for_grpc_tcp("localhost", 8081)
-    server = ShootsServer(location)
+    parser = argparse.ArgumentParser(description='Starts the Shoots Flight Server.')
+    parser.add_argument('--port', type=int, default=8081, help='Port number to run the Flight server on.')
+    parser.add_argument('--bucket_dir', type=str, default='buckets', help='Path to the bucket directory.')
+
+    args = parser.parse_args()
+    location = flight.Location.for_grpc_tcp("localhost", args.port)
+    server = ShootsServer(location, bucket_dir=args.bucket_dir)
     server.run()
