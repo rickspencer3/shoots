@@ -10,7 +10,7 @@ import argparse
 
 class ShootsServer(flight.FlightServerBase):
     """
-    A FlightServer for managing and serving Parquet datasets.
+    A FlightServer for managing and serving pandas datasets.
 
     Attributes:
         location (pyarrow.flight.Location): The server location.
@@ -48,7 +48,6 @@ class ShootsServer(flight.FlightServerBase):
         
         Example:
             To request a dataset, create a ticket with the required information in JSON format.
-            Here's an example of how a client might encode a ticket:
 
             ```python
             import json
@@ -100,7 +99,7 @@ class ShootsServer(flight.FlightServerBase):
         Handles uploading or appending data to a dataframe.
         
         You can optionally specify a mode to determine the behavior in case there is already a dataframe with the same name stored:
-         - error - This is the default behavior that will occur if no other mode is specified. The put operation will return a FlightServerError, and no changes will take place
+         - error - (default) The put operation will return a FlightServerError, and no changes will take place
          - append - Add the data in the dataframe to the existing dataframe of the same name.
          - replace - Delete all of the data in the existing dataframe and replace it with the new data.
 
@@ -278,7 +277,7 @@ class ShootsServer(flight.FlightServerBase):
         Returns:
             List[flight.ActionType]: A list of available actions.
         """
-        
+
         actions = [
             ("delete", "Delete a dataframe"),
             ("buckets", "List buckets"),
@@ -369,6 +368,10 @@ class ShootsServer(flight.FlightServerBase):
         return [result]
         
     def run(self):
+        """
+        Call FlightServerBase.serve() to block until the server shuts down.
+
+        """
         print(f"Starting Flight server on {self.location.uri.decode()}")
         self.serve()
 
