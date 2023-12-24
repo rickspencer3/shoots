@@ -15,8 +15,9 @@ Under the hood, the server receives and serves pandas dataframes, storing thenm 
 The client pieces wrap the [Apache FlightClient](https://arrow.apache.org/docs/python/generated/pyarrow.flight.FlightClient.html) to offer an interface for pandas developers, abstracting away the Apache Arrow and Flight concepts.
 
 # usage
-## run the server
-There are currently no run time options, so running the server is a simple matter of running the python module, depending on your system:
+## starting up the server
+### terminal
+Running the server is a simple matter of running the python module, depending on your system:
 
 ```bash
 python shoots_server.py
@@ -27,8 +28,45 @@ or
 python3 shoots_server.py
 ```
 
+There are 2 startup options currently:
+ - ```bucket_dir```: Allows you to specify a directory where the dataframes get stored. Defaults to "buckets".
+ - ```port```: The port on which to run the server. Defaults to 8081.
+
+```bash
+python3 shoots_server.py --port=8082 --bucket_dir="/foo/bar"
+```
+
+### python
+You can also start up the server in Python. It is best to start it on a thread or you won't be able to cleanly shut it down.
+```python
+from pyarrow.flight import Location
+import threading
+
+location = Location.for_grpc_tcp("localhost", 8081)
+server = ShootsServer(location, bucket_dir="/foo/bar") #bucket_dir is optional
+server_thread = threading.Thread(target=server.run)
+server_thread.start()
+```
+## shutting down the server
+### from the shoots client
+Shoots supports a ```shutdown``` action. You can call it from the shoots client:
+
+```python
+from shoots_client import ShootsClient
+
+shoots = ShootsClient("localhost", 8081)
+shoots.shutdown()
+```
+### from python code
+You can also call it from a thread in Python. Assuming you ran the server on thread:
+
+```python
+server.shutdown()
+server_thread.join()
+```
+   
 ## storing a dataframe
-Use the client library to create an instance of the client, and "put" a dataframe. Assuming you are running locally:
+Use the client library to create an instance of the client, and ```put()``` a dataframe. Assuming you are running locally:
 ```python
 from shoots_client import ShootsClient
 from shoots_client import PutMode
@@ -120,7 +158,7 @@ buckets after deletion:
 # Roadmap
 I intend to work on the following in the coming weeks, in no particular order:
 
-- [ ] add a runtime option for the root bucket directory, use it for testing
+- [X] add a runtime option for the root bucket directory, use it for testing
 - [ ] document code and generate docs
 - [ ] pip packaging
 - [ ] pattern matching for ```list()```
