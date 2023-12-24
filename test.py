@@ -23,6 +23,11 @@ class TestClient(unittest.TestCase):
 
         self.client.delete("test1")
 
+    def test_delete_file_not_found(self):
+        with self.assertRaises(FlightServerError):
+            self.client.delete("abcdefghijklmnopqrstuvwxyz")
+        
+
     def test_write_error(self):
         self.client.put("test1",self.dataframe1,mode=PutMode.ERROR)
         with self.assertRaises(FlightServerError):

@@ -149,21 +149,18 @@ class ShootsServer(flight.FlightServerBase):
         bucket = data["bucket"]
         file_path = self._create_file_path(name, bucket)
 
-        msg = f"{data['name']} deleted succesfully"
-        success = True
         try:
             os.remove(file_path)
         except FileNotFoundError:
-            msg = (f"{data} does not exist.")
-            success = False
+            raise flight.FlightServerError(f"Dataset {name} not found",
+                                extra_info="No Such Dataset")
         except PermissionError:
-            msg = f"Permission denied: unable to delete {data}."
-            success = False
+            raise flight.FlightUnauthorizedError(f"Insufficent permisions to delete {name}")
         except OSError as e:
-            msg = f"Error deleting file {file_path}: {e}"
-            success = False
+            raise flight.FlightServerError(f"Error encountered deleting {name}",
+                                           extra_info=str(e))
         
-        result_data = {"success":success, "message":msg}
+        result_data = {"success":True, "message":f"deleted {name}"}
         return self._flight_result_from_dict(result_data)
 
     def _flight_result_from_dict(self, result_data):
