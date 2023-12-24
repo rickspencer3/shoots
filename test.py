@@ -37,7 +37,7 @@ class TestClient(unittest.TestCase):
     def test_list_actions(self):
         client = FlightClient(self.location)
         actions = client.list_actions()
-        self.assertGreaterEqual(len(actions), 5)
+        self.assertGreaterEqual(len(actions), 4)
     
     def test_write_replace_mode(self):
         self.client.put("test1",self.dataframe0,mode=PutMode.REPLACE)    

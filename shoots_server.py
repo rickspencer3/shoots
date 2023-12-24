@@ -9,12 +9,70 @@ import threading
 import argparse
 
 class ShootsServer(flight.FlightServerBase):
+    """
+    A FlightServer for managing and serving Parquet datasets.
+
+    Attributes:
+        location (pyarrow.flight.Location): The server location.
+        bucket_dir (str): Directory path for storing parquet datasets.
+    """
+
     def __init__(self, location, bucket_dir, *args, **kwargs):
-        self._location = location
+        """
+        Initializes the ShootsServer.
+
+        Args:
+            location (pyarrow.flight.Location): The location where the server will run.
+            bucket_dir (str): Directory path where the parquet files will be stored.
+        """
+        self.location = location
         self.bucket_dir = bucket_dir
         super(ShootsServer, self).__init__(location, *args, **kwargs)
 
     def do_get(self, context, ticket):
+        """
+        Handles the retrieval of a dataframe based on the given ticket.
+
+        You can optionally specify a bucket where the dataframe is stored.
+
+        You can optionally specify a SQL statement which will use the DataFusion query engine to query the data before returned the dataframe.
+
+        Args:
+            ticket (flight.Ticket): The ticket object containing the dataset request details.
+
+        Returns:
+            flight.RecordBatchStream: A stream of record batches for the requested dataset.
+
+        Raises:
+            flight.FlightServerError: If there is an issue in processing the request.
+        
+        Example:
+            To request a dataset, create a ticket with the required information in JSON format.
+            Here's an example of how a client might encode a ticket:
+
+            ```python
+            import json
+            from pyarrow import flight
+
+            # Define the request details
+            # sql and bucket are both optional
+            # Leave out the sql statement to return the whole dataframe
+            ticket_data = {
+                "name": "my_dataset",
+                "bucket": "my_bucket",
+                "sql": "SELECT * FROM my_dataset WHERE condition"
+            }
+
+            # Encode the request as a JSON string
+            ticket_bytes = json.dumps(request).encode()
+
+            # Create a ticket object
+            ticket = flight.Ticket(ticket_bytes)
+
+            # Use this ticket with the do_get method of the FlightServer
+            reader = self.client.do_get(ticket)
+            ```
+        """
         try:
             ticket_obj = json.loads(ticket.ticket.decode())
             name = ticket_obj["name"]
@@ -38,6 +96,44 @@ class ShootsServer(flight.FlightServerBase):
             raise flight.FlightServerError(extra_info=str(e))
     
     def do_put(self, context, descriptor, reader, writer):
+        """
+        Handles uploading or appending data to a dataframe.
+        
+        You can optionally specify a mode to determine the behavior in case there is already a dataframe with the same name stored:
+         - error - This is the default behavior that will occur if no other mode is specified. The put operation will return a FlightServerError, and no changes will take place
+         - append - Add the data in the dataframe to the existing dataframe of the same name.
+         - replace - Delete all of the data in the existing dataframe and replace it with the new data.
+
+         You can optionally specific a bucket. A bucket is top level organization for your dataframes. Buckets will be created automatically on write if needed.
+        Args:
+            descriptor (flight.FlightDescriptor): Descriptor containing details about the dataset.
+
+        Raises:
+            flight.FlightServerError: If an error occurs during data processing.
+        
+        Example:
+            To write dataset, create a Ticket with the required information in JSON format. 
+
+            ```python
+            # create the json for the FlightDescriptor. Mode and bucket are optional.
+            descriptor_bytes = json.dumps({"name": "my_bucket",
+                        "mode": "error", 
+                        "bucket":"my_bucket"}).encode()
+            
+            # create the descriptor
+            descriptor = FlightDescriptor.for_command(command)
+
+            # convert the dataframe to an arrow table
+            table = pa.Table.from_pandas(df)
+
+            # call do_put() to get back a writer
+            writer, _ = self.client.do_put(descriptor, table.schema)
+            
+            # write the data and close the writer
+            writer.write_table(table)
+            writer.close()
+            ```
+        """
         command = json.loads(descriptor.command.decode())
 
         # Extract name and mode from the command
@@ -61,6 +157,35 @@ class ShootsServer(flight.FlightServerBase):
             pq.write_table(data_table, file_path) 
 
     def list_flights(self, context, criteria):
+        """
+        Lists available dataframes based on given criteria.
+
+        You can optionally specify a bucket name to list dataframes in the specified bucket.
+
+        Args:
+            criteria: Criteria to filter datasets.
+
+        Yields:
+            flight.FlightInfo: Information about each available flight (dataset).
+        
+        Example:
+            ```python
+                # create the criteria. bucket can be None
+                criteria_data = {"bucket":"my_bucket", "regex":None}
+                criateria_bytes = json.dumps(descriptor_data).encode()
+
+                # get the list of FlightInfos.
+                flights = self.client.list_flights(criteria=descriptor_bytes)
+
+                # iterate the FlightInfos
+                for flight in flights:
+                    print(flight.descriptor.path[0].decode(), flight.schema)                
+            ```
+
+        Note:
+            The regex criteria is not yet implemented on the server.
+        """
+
         data_obj = json.loads(criteria.decode())
         bucket = data_obj["bucket"]
         regex = data_obj["regex"]
@@ -79,13 +204,60 @@ class ShootsServer(flight.FlightServerBase):
                             parquet_file.metadata.serialized_size)
 
     def do_action(self, context, action):
+        """
+        Performs a specific action based on the request.
+
+        do_action() is a generic handler that receives instructions through the action "type" (i.e. name of the action), and a json payload for extra instructions.
+
+        delete_bucket has an optional mode to determine the behavior if there are dataframes in the bucket.
+        error - (default) raise a FlightServerError and leave the bucket untouched
+        delete - delete all of the contents of the bucket and the bucket itself.
+
+        Args:.
+            action (flight.Action): An action to be performed.
+
+        Raises:
+            FlightServerError
+
+        Returns:
+            Flight Result.
+
+            buckets returns FlightResult with a list of bucket names, others return a message.
+
+        Example:
+            The different actions require different payloads.
+
+            ```python
+            # delete example with optional bucket name
+            action_description = json.dumps({"name":"my_dataframe", "bucket":"my_bucket"}).encode()
+            action = Action("delete",action_description)
+            self.client.do_action(action)
+
+            # buckets example
+            bytes = json.dumps({}).encode()
+            action = Action("buckets",bytes)
+            result = self.client.do_action(action)
+            for r in result:
+                print(r.body.to_pybytes().decode())
+
+            # delete_bucket example
+            action_obj = {"name":"my_bucket, "mode":"error"}
+            bytes = json.dumps(action_obj).encode()
+            action = Action("delete_bucket",bytes)
+            self.client.do_action(action)
+
+            # shutdown example
+            bytes = json.dumps({}).encode()
+            action = Action("shutdown", bytes)
+            self.client.do_action(action)
+            ```
+        """
+
         action, data = action.type, action.body.to_pybytes().decode()
         if data:
             data = json.loads(data)
         if action == "delete":
             return self._delete(data)
-        if action == "list":
-            return self._list_parquet_files(data)
         if action == "buckets":
             return self._buckets()
         if action == "delete_bucket":
@@ -97,9 +269,18 @@ class ShootsServer(flight.FlightServerBase):
             return self._list_to_flight_result(["shutdown command received"])
 
     def list_actions(self, context):
+        """
+        Lists all available actions that the server can perform.
+
+        Args:
+            context: The server context.
+
+        Returns:
+            List[flight.ActionType]: A list of available actions.
+        """
+        
         actions = [
             ("delete", "Delete a dataframe"),
-            ("list", "List dataframes"),
             ("buckets", "List buckets"),
             ("delete_bucket", "Delete a bucket"),
             ("shutdown", "Shutdown the server")
@@ -188,7 +369,7 @@ class ShootsServer(flight.FlightServerBase):
         return [result]
         
     def run(self):
-        print(f"Starting Flight server on {self._location.uri.decode()}")
+        print(f"Starting Flight server on {self.location.uri.decode()}")
         self.serve()
 
 if __name__ == "__main__":
