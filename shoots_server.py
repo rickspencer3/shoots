@@ -80,7 +80,8 @@ class ShootsServer(flight.FlightServerBase):
 
     def do_action(self, context, action):
         action, data = action.type, action.body.to_pybytes().decode()
-        data = json.loads(data)
+        if data:
+            data = json.loads(data)
         if action == "delete":
             return self._delete(data)
         if action == "list":
@@ -94,6 +95,17 @@ class ShootsServer(flight.FlightServerBase):
             shutdown_thread.start()
             print("Shutting down ...")
             return self._list_to_flight_result(["shutdown command received"])
+
+    def list_actions(self, context):
+        actions = [
+            ("delete", "Delete a dataframe"),
+            ("list", "List dataframes"),
+            ("buckets", "List buckets"),
+            ("delete_bucket", "Delete a bucket"),
+            ("shutdown", "Shutdown the server")
+        ]
+
+        return [flight.ActionType(action, description) for action, description in actions]
 
     def _create_file_path(self, name, bucket=None):
         bucket_path = None
