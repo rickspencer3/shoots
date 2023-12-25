@@ -297,8 +297,27 @@ class ShootsServer(flight.FlightServerBase):
         method = getattr(df_source, aggregation_func, None)
         df_target = method()
         target_cols = df_target.shape[0]
+ 
+        # need to do some dancing here to append data because
+        # the parquet file stores the timestamp column in milliseconds, but
+        # pandas only understands nanoseconds
         table = pa.Table.from_pandas(df_target)
-        self._write_arrow_table(target, mode ,target_bucket, table)
+        if mode != "append":    
+            self._write_arrow_table(target, mode ,target_bucket, table)
+        else:
+            file_path = self._create_file_path(target, target_bucket)
+            if os.path.exists(file_path):
+                existing_table = pq.read_table(file_path)
+                converted_timestamp_col = table.column(time_col).cast(pa.timestamp('us'))
+
+                table = table.set_column(table.schema.get_field_index(time_col),
+                                        pa.field(time_col, pa.timestamp('us')),
+                                        converted_timestamp_col)
+                data_table = pa.concat_tables([existing_table, table])
+
+                pq.write_table(data_table, file_path)
+            else:
+                self._write_arrow_table(target, mode ,target_bucket, table)
 
         return self._flight_result_from_dict({"source_cols":source_cols,
                                               "target_cols":target_cols})

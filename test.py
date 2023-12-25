@@ -162,6 +162,17 @@ class TestClient(unittest.TestCase):
         df_thousands = self.client.get("thousand")
         self.assertEqual(df_thousands.shape[0], 1000)    
 
+
+        self.client.resample(source="million", 
+                             target="thousand",
+                             rule="10s",
+                             time_col="timestamp",
+                             aggregation_func="mean",
+                             mode=PutMode.APPEND)
+
+        df_thousands = self.client.get("thousand")
+        self.assertEqual(df_thousands.shape[0], 2000) 
+
         self.client.delete("million")
         self.client.delete("thousand")
 
