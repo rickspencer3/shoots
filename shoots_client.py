@@ -136,9 +136,7 @@ class ShootsClient:
     def shutdown(self):
         action_description = json.dumps({}).encode()
         action = Action("shutdown",action_description)
-        result = self.client.do_action(action)
-        for r in result:
-            print(r.body.to_pybytes().decode())
+        return self.client.do_action(action)
 
     def _flight_result_to_list(self, result):
         list_string = None

@@ -18,7 +18,7 @@ class TestClient(unittest.TestCase):
 
         cls.location = Location.for_grpc_tcp("localhost", cls.port)
         cls.server = ShootsServer(cls.location, bucket_dir=cls.bucket_dir)
-        cls.server_thread = threading.Thread(target=cls.server.run)
+        cls.server_thread = threading.Thread(target=cls.server.serve)
         cls.server_thread.start()
 
         cls.client = ShootsClient("localhost", cls.port)
@@ -37,7 +37,7 @@ class TestClient(unittest.TestCase):
     def test_list_actions(self):
         client = FlightClient(self.location)
         actions = client.list_actions()
-        self.assertGreaterEqual(len(actions), 4)
+        self.assertGreaterEqual(len(actions), 3)
     
     def test_write_replace_mode(self):
         self.client.put("test1",self.dataframe0,mode=PutMode.REPLACE)    

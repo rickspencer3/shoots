@@ -262,10 +262,7 @@ class ShootsServer(flight.FlightServerBase):
         if action == "delete_bucket":
             return self._delete_bucket(data)
         if action == "shutdown":
-            shutdown_thread = threading.Thread(target=self.shutdown)
-            shutdown_thread.start()
-            print("Shutting down ...")
-            return self._list_to_flight_result(["shutdown command received"])
+            return self.shutdown()
 
     def list_actions(self, context):
         """
@@ -366,14 +363,22 @@ class ShootsServer(flight.FlightServerBase):
         bytes = json.dumps(result_data).encode()
         result = flight.Result(bytes)
         return [result]
-        
-    def run(self):
+
+    def shutdown(self):
+            shutdown_thread = threading.Thread(target=super(ShootsServer, self).shutdown)
+            shutdown_thread.start()
+            
+            print("Shutting down ...")
+            return self._list_to_flight_result(["shutdown command received"])
+
+    def serve(self):
         """
-        Call FlightServerBase.serve() to block until the server shuts down.
+        Serve until shutdown is called.
 
         """
         print(f"Starting Flight server on {self.location.uri.decode()}")
-        self.serve()
+        
+        super(ShootsServer, self).serve()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Starts the Shoots Flight Server.')
@@ -383,4 +388,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     location = flight.Location.for_grpc_tcp("localhost", args.port)
     server = ShootsServer(location, bucket_dir=args.bucket_dir)
-    server.run()
+    server.serve()
