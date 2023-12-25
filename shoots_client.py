@@ -83,6 +83,16 @@ class ListRequest(BaseModel):
     bucket: Optional[str] = None
     regex: Optional[str] = None
 
+class ResampleRequest(BaseModel):
+    """
+    Internal class for configuring a resample request.
+    """
+    source: str
+    target: str
+    rule: str
+    time_col: str
+    aggregation_func: str
+
 class GetRequest(BaseModel):
     """
     Internal class for configuring a get request.
@@ -415,6 +425,30 @@ class ShootsClient:
 
         return self._flight_result_to_string(result)
     
+    def resample(self, 
+                 source: str, 
+                 target: str, 
+                 rule: str, 
+                 time_col: str,
+                 aggregation_func: str):
+        
+        req = ResampleRequest(
+                source=source,
+                target=target,
+                rule=rule,
+                time_col=time_col,
+                aggregation_func=aggregation_func)
+        
+        resample_data = {"source":req.source,
+                "target":req.target,
+                "rule":req.rule,
+                "time_col":req.time_col,
+                "aggregation_func":req.aggregation_func}
+        bytes = json.dumps(resample_data).encode()
+        action = Action("resample",bytes)
+        result = self.client.do_action(action)
+        return self._flight_result_to_string(result)
+      
     def _flight_result_to_list(self, result):
         list_string = None
         for r in result:

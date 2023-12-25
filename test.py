@@ -2,6 +2,7 @@ from shoots_client import ShootsClient
 from shoots_server import ShootsServer
 from shoots_client import PutMode, BucketDeleteMode
 import pandas as pd
+import numpy as np
 from pyarrow.flight import FlightServerError, Location, FlightClient
 import threading
 import shutil
@@ -115,6 +116,29 @@ class TestClient(unittest.TestCase):
             raise
         self.client.delete("test1")
         self.client.delete("test2")
+
+    def test_resample(self):
+        num_rows = 1000000
+        date_range_milliseconds = pd.date_range(start='2020-01-01', periods=num_rows, freq='10L')
+
+        df = pd.DataFrame({
+            'timestamp': date_range_milliseconds,
+            'data': np.random.randn(num_rows)  # Example data column with random numbers
+        })
+
+        self.client.put(name="million", dataframe=df)
+
+        self.client.resample(source="million", 
+                             target="thousand",
+                             rule="1s",
+                             time_col="timestamp",
+                             aggregation_func="mean"
+                             )
+        res = self.client.get("thousand")
+        self.assertEqual(res.shape[0],1000)
+
+        self.client.delete("million")
+        self.client.delete("thousand")
 
     def test_list_with_bucket(self):
         self.client.put("test1",
