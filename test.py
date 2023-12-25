@@ -6,6 +6,8 @@ import numpy as np
 from pyarrow.flight import FlightServerError, Location, FlightClient
 import threading
 import shutil
+import random
+import string
 import unittest
 
 class TestClient(unittest.TestCase):
@@ -117,9 +119,22 @@ class TestClient(unittest.TestCase):
         self.client.delete("test1")
         self.client.delete("test2")
 
+    # def test_resample_with_sql(self):
+    #     df = self._generate_dataframe(1000000)
+    #     source = "million0"
+    #     self.client.put(name=source, dataframe=df)
+
+    #     sql = "SELECT * FROM million LIMIT 10"
+    #     res = self.client.resample(source=source,
+    #                                target="ten",
+    #                                sql=sql)
+    #     self.assertEqual(res["target_cols"], 10)
+    #     self.client.delete(source)
+    #     self.client.delete("ten")
+
     def test_resample_no_buckets(self):
         num_rows = 1000000
-        df = self._generate_dataframe(num_rows)
+        df = self._generate_dataframe_with_timestamp(num_rows)
 
         self.client.put(name="million", dataframe=df)
 
@@ -140,7 +155,7 @@ class TestClient(unittest.TestCase):
 
     def test_resample_append(self):
         num_rows = 1000000
-        df = self._generate_dataframe(num_rows)
+        df = self._generate_dataframe_with_timestamp(num_rows)
 
         self.client.put(name="million", dataframe=df)
 
@@ -178,7 +193,7 @@ class TestClient(unittest.TestCase):
 
     def test_resample_with_buckets(self):
         num_rows = 1000000
-        df = self._generate_dataframe(num_rows)
+        df = self._generate_dataframe_with_timestamp(num_rows)
 
         source_bucket="million_bucket"
         target_bucket="thousand_bucket"
@@ -201,6 +216,19 @@ class TestClient(unittest.TestCase):
         self.client.delete("thousand", bucket=target_bucket)
 
     def _generate_dataframe(self, num_rows):
+        integers = np.random.randint(0, 100, size=num_rows)  # Random integers between 0 and 99
+        floats = np.random.random(size=num_rows)  # Random floats
+        strings = [''.join(random.choices(string.ascii_lowercase, k=5)) for _ in range(num_rows)]  # Random 5-letter strings
+
+        # Create the DataFrame
+        return pd.DataFrame({
+            'int_col': integers,
+            'float_col': floats,
+            'string': strings})
+        
+
+
+    def _generate_dataframe_with_timestamp(self, num_rows):
         date_range_milliseconds = pd.date_range(start='2020-01-01', 
                                                 periods=num_rows, 
                                                 freq='10L')

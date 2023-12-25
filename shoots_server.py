@@ -283,9 +283,12 @@ class ShootsServer(flight.FlightServerBase):
         if action == "shutdown":
             return self.shutdown()
         if action == "resample":
-            return self._resample(data)
+            if data.get("sql",False):
+                return self._flight_result_from_dict({"target_cols":-1})
+            else:
+                return self._resample_time_series(data)
     
-    def _resample(self, data):
+    def _resample_time_series(self, data):
         source = data["source"]
         target = data["target"]
         rule = data["rule"]
