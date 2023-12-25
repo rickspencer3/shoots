@@ -1,0 +1,306 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: class ShootsServer</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head><body bgcolor="#f0f0f8">
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><strong>shoots_server.ShootsServer</strong> = <a name="shoots_server.ShootsServer">class ShootsServer</a>(<a href="pyarrow._flight.html#FlightServerBase">pyarrow._flight.FlightServerBase</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>shoots_server.ShootsServer(location,&nbsp;bucket_dir,&nbsp;*args,&nbsp;**kwargs)<br>
+&nbsp;<br>
+A&nbsp;FlightServer&nbsp;for&nbsp;managing&nbsp;and&nbsp;serving&nbsp;pandas&nbsp;datasets.<br>
+&nbsp;<br>
+Attributes:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;location&nbsp;(pyarrow.flight.Location):&nbsp;The&nbsp;server&nbsp;location.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;bucket_dir&nbsp;(str):&nbsp;Directory&nbsp;path&nbsp;for&nbsp;storing&nbsp;parquet&nbsp;datasets.<br>
+&nbsp;<br>
+Note:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;You&nbsp;most&nbsp;likely&nbsp;don't&nbsp;want&nbsp;to&nbsp;use&nbsp;the&nbsp;server&nbsp;directly,&nbsp;accept&nbsp;for&nbsp;starting&nbsp;it&nbsp;up.&nbsp;It&nbsp;is&nbsp;easiest&nbsp;to&nbsp;interact&nbsp;with&nbsp;the&nbsp;server&nbsp;via&nbsp;ShootsClient.<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%"><dl><dt>Method resolution order:</dt>
+<dd><a href="shoots_server.html#ShootsServer">ShootsServer</a></dd>
+<dd><a href="pyarrow._flight.html#FlightServerBase">pyarrow._flight.FlightServerBase</a></dd>
+<dd><a href="pyarrow.lib.html#_Weakrefable">pyarrow.lib._Weakrefable</a></dd>
+<dd><a href="builtins.html#object">builtins.object</a></dd>
+</dl>
+<hr>
+Methods defined here:<br>
+<dl><dt><a name="ShootsServer-__init__"><strong>__init__</strong></a>(self, location, bucket_dir, *args, **kwargs)</dt><dd><tt>Initializes&nbsp;the&nbsp;ShootsServer.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;location&nbsp;(pyarrow.flight.Location):&nbsp;The&nbsp;location&nbsp;where&nbsp;the&nbsp;server&nbsp;will&nbsp;run.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;bucket_dir&nbsp;(str):&nbsp;Directory&nbsp;path&nbsp;where&nbsp;the&nbsp;parquet&nbsp;files&nbsp;will&nbsp;be&nbsp;stored.</tt></dd></dl>
+
+<dl><dt><a name="ShootsServer-do_action"><strong>do_action</strong></a>(self, context, action)</dt><dd><tt>Performs&nbsp;a&nbsp;specific&nbsp;action&nbsp;based&nbsp;on&nbsp;the&nbsp;request.<br>
+&nbsp;<br>
+<a href="#shoots_server.ShootsServer-do_action">do_action</a>()&nbsp;is&nbsp;a&nbsp;generic&nbsp;handler&nbsp;that&nbsp;receives&nbsp;instructions&nbsp;through&nbsp;the&nbsp;action&nbsp;"type"&nbsp;(i.e.&nbsp;name&nbsp;of&nbsp;the&nbsp;action),&nbsp;and&nbsp;a&nbsp;json&nbsp;payload&nbsp;for&nbsp;extra&nbsp;instructions.<br>
+&nbsp;<br>
+delete_bucket&nbsp;has&nbsp;an&nbsp;optional&nbsp;mode&nbsp;to&nbsp;determine&nbsp;the&nbsp;behavior&nbsp;if&nbsp;there&nbsp;are&nbsp;dataframes&nbsp;in&nbsp;the&nbsp;bucket.<br>
+error&nbsp;-&nbsp;(default)&nbsp;raise&nbsp;a&nbsp;FlightServerError&nbsp;and&nbsp;leave&nbsp;the&nbsp;bucket&nbsp;untouched<br>
+delete&nbsp;-&nbsp;delete&nbsp;all&nbsp;of&nbsp;the&nbsp;contents&nbsp;of&nbsp;the&nbsp;bucket&nbsp;and&nbsp;the&nbsp;bucket&nbsp;itself.<br>
+&nbsp;<br>
+Args:.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;action&nbsp;(flight.Action):&nbsp;An&nbsp;action&nbsp;to&nbsp;be&nbsp;performed.<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;FlightServerError<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Flight&nbsp;Result.<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;buckets&nbsp;returns&nbsp;FlightResult&nbsp;with&nbsp;a&nbsp;list&nbsp;of&nbsp;bucket&nbsp;names,&nbsp;others&nbsp;return&nbsp;a&nbsp;message.<br>
+&nbsp;<br>
+Example:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;different&nbsp;actions&nbsp;require&nbsp;different&nbsp;payloads.<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;```python<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;delete&nbsp;example&nbsp;with&nbsp;optional&nbsp;bucket&nbsp;name<br>
+&nbsp;&nbsp;&nbsp;&nbsp;action_description&nbsp;=&nbsp;json.dumps({"name":"my_dataframe",&nbsp;"bucket":"my_bucket"}).encode()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;action&nbsp;=&nbsp;Action("delete",action_description)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;self.<strong>client</strong>.<a href="#shoots_server.ShootsServer-do_action">do_action</a>(action)<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;buckets&nbsp;example<br>
+&nbsp;&nbsp;&nbsp;&nbsp;bytes&nbsp;=&nbsp;json.dumps({}).encode()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;action&nbsp;=&nbsp;Action("buckets",bytes)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;result&nbsp;=&nbsp;self.<strong>client</strong>.<a href="#shoots_server.ShootsServer-do_action">do_action</a>(action)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;r&nbsp;in&nbsp;result:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print(r.body.to_pybytes().decode())<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;delete_bucket&nbsp;example<br>
+&nbsp;&nbsp;&nbsp;&nbsp;action_obj&nbsp;=&nbsp;{"name":"my_bucket,&nbsp;"mode":"error"}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;bytes&nbsp;=&nbsp;json.dumps(action_obj).encode()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;action&nbsp;=&nbsp;Action("delete_bucket",bytes)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;self.<strong>client</strong>.<a href="#shoots_server.ShootsServer-do_action">do_action</a>(action)<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;shutdown&nbsp;example<br>
+&nbsp;&nbsp;&nbsp;&nbsp;bytes&nbsp;=&nbsp;json.dumps({}).encode()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;action&nbsp;=&nbsp;Action("shutdown",&nbsp;bytes)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;self.<strong>client</strong>.<a href="#shoots_server.ShootsServer-do_action">do_action</a>(action)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;```</tt></dd></dl>
+
+<dl><dt><a name="ShootsServer-do_get"><strong>do_get</strong></a>(self, context, ticket)</dt><dd><tt>Handles&nbsp;the&nbsp;retrieval&nbsp;of&nbsp;a&nbsp;dataframe&nbsp;based&nbsp;on&nbsp;the&nbsp;given&nbsp;ticket.<br>
+&nbsp;<br>
+You&nbsp;can&nbsp;optionally&nbsp;specify&nbsp;a&nbsp;bucket&nbsp;where&nbsp;the&nbsp;dataframe&nbsp;is&nbsp;stored.<br>
+&nbsp;<br>
+You&nbsp;can&nbsp;optionally&nbsp;specify&nbsp;a&nbsp;SQL&nbsp;statement&nbsp;which&nbsp;will&nbsp;use&nbsp;the&nbsp;DataFusion&nbsp;query&nbsp;engine&nbsp;to&nbsp;query&nbsp;the&nbsp;data&nbsp;before&nbsp;returned&nbsp;the&nbsp;dataframe.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;ticket&nbsp;(flight.Ticket):&nbsp;The&nbsp;ticket&nbsp;object&nbsp;containing&nbsp;the&nbsp;dataset&nbsp;request&nbsp;details.<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;flight.RecordBatchStream:&nbsp;A&nbsp;stream&nbsp;of&nbsp;record&nbsp;batches&nbsp;for&nbsp;the&nbsp;requested&nbsp;dataset.<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;flight.FlightServerError:&nbsp;If&nbsp;there&nbsp;is&nbsp;an&nbsp;issue&nbsp;in&nbsp;processing&nbsp;the&nbsp;request.<br>
+&nbsp;<br>
+Example:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;To&nbsp;request&nbsp;a&nbsp;dataset,&nbsp;create&nbsp;a&nbsp;ticket&nbsp;with&nbsp;the&nbsp;required&nbsp;information&nbsp;in&nbsp;JSON&nbsp;format.<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;```python<br>
+&nbsp;&nbsp;&nbsp;&nbsp;import&nbsp;json<br>
+&nbsp;&nbsp;&nbsp;&nbsp;from&nbsp;pyarrow&nbsp;import&nbsp;flight<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;Define&nbsp;the&nbsp;request&nbsp;details<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;sql&nbsp;and&nbsp;bucket&nbsp;are&nbsp;both&nbsp;optional<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;Leave&nbsp;out&nbsp;the&nbsp;sql&nbsp;statement&nbsp;to&nbsp;return&nbsp;the&nbsp;whole&nbsp;dataframe<br>
+&nbsp;&nbsp;&nbsp;&nbsp;ticket_data&nbsp;=&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"name":&nbsp;"my_dataset",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"bucket":&nbsp;"my_bucket",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"sql":&nbsp;"SELECT&nbsp;*&nbsp;FROM&nbsp;my_dataset&nbsp;WHERE&nbsp;condition"<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;Encode&nbsp;the&nbsp;request&nbsp;as&nbsp;a&nbsp;JSON&nbsp;string<br>
+&nbsp;&nbsp;&nbsp;&nbsp;ticket_bytes&nbsp;=&nbsp;json.dumps(request).encode()<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;Create&nbsp;a&nbsp;ticket&nbsp;object<br>
+&nbsp;&nbsp;&nbsp;&nbsp;ticket&nbsp;=&nbsp;flight.Ticket(ticket_bytes)<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;Use&nbsp;this&nbsp;ticket&nbsp;with&nbsp;the&nbsp;do_get&nbsp;method&nbsp;of&nbsp;the&nbsp;FlightServer<br>
+&nbsp;&nbsp;&nbsp;&nbsp;reader&nbsp;=&nbsp;self.<strong>client</strong>.<a href="#shoots_server.ShootsServer-do_get">do_get</a>(ticket)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;```</tt></dd></dl>
+
+<dl><dt><a name="ShootsServer-do_put"><strong>do_put</strong></a>(self, context, descriptor, reader, writer)</dt><dd><tt>Handles&nbsp;uploading&nbsp;or&nbsp;appending&nbsp;data&nbsp;to&nbsp;a&nbsp;dataframe.<br>
+&nbsp;<br>
+You&nbsp;can&nbsp;optionally&nbsp;specify&nbsp;a&nbsp;mode&nbsp;to&nbsp;determine&nbsp;the&nbsp;behavior&nbsp;in&nbsp;case&nbsp;there&nbsp;is&nbsp;already&nbsp;a&nbsp;dataframe&nbsp;with&nbsp;the&nbsp;same&nbsp;name&nbsp;stored:<br>
+&nbsp;-&nbsp;error&nbsp;-&nbsp;(default)&nbsp;The&nbsp;put&nbsp;operation&nbsp;will&nbsp;return&nbsp;a&nbsp;FlightServerError,&nbsp;and&nbsp;no&nbsp;changes&nbsp;will&nbsp;take&nbsp;place<br>
+&nbsp;-&nbsp;append&nbsp;-&nbsp;Add&nbsp;the&nbsp;data&nbsp;in&nbsp;the&nbsp;dataframe&nbsp;to&nbsp;the&nbsp;existing&nbsp;dataframe&nbsp;of&nbsp;the&nbsp;same&nbsp;name.<br>
+&nbsp;-&nbsp;replace&nbsp;-&nbsp;Delete&nbsp;all&nbsp;of&nbsp;the&nbsp;data&nbsp;in&nbsp;the&nbsp;existing&nbsp;dataframe&nbsp;and&nbsp;replace&nbsp;it&nbsp;with&nbsp;the&nbsp;new&nbsp;data.<br>
+&nbsp;<br>
+&nbsp;You&nbsp;can&nbsp;optionally&nbsp;specific&nbsp;a&nbsp;bucket.&nbsp;A&nbsp;bucket&nbsp;is&nbsp;top&nbsp;level&nbsp;organization&nbsp;for&nbsp;your&nbsp;dataframes.&nbsp;Buckets&nbsp;will&nbsp;be&nbsp;created&nbsp;automatically&nbsp;on&nbsp;write&nbsp;if&nbsp;needed.<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;descriptor&nbsp;(flight.FlightDescriptor):&nbsp;Descriptor&nbsp;containing&nbsp;details&nbsp;about&nbsp;the&nbsp;dataset.<br>
+&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;flight.FlightServerError:&nbsp;If&nbsp;an&nbsp;error&nbsp;occurs&nbsp;during&nbsp;data&nbsp;processing.<br>
+&nbsp;<br>
+Example:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;To&nbsp;write&nbsp;dataset,&nbsp;create&nbsp;a&nbsp;Ticket&nbsp;with&nbsp;the&nbsp;required&nbsp;information&nbsp;in&nbsp;JSON&nbsp;format.&nbsp;<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;```python<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;create&nbsp;the&nbsp;json&nbsp;for&nbsp;the&nbsp;FlightDescriptor.&nbsp;Mode&nbsp;and&nbsp;bucket&nbsp;are&nbsp;optional.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;descriptor_bytes&nbsp;=&nbsp;json.dumps({"name":&nbsp;"my_bucket",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"mode":&nbsp;"error",&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"bucket":"my_bucket"}).encode()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;create&nbsp;the&nbsp;descriptor<br>
+&nbsp;&nbsp;&nbsp;&nbsp;descriptor&nbsp;=&nbsp;FlightDescriptor.for_command(command)<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;convert&nbsp;the&nbsp;dataframe&nbsp;to&nbsp;an&nbsp;arrow&nbsp;table<br>
+&nbsp;&nbsp;&nbsp;&nbsp;table&nbsp;=&nbsp;pa.Table.from_pandas(df)<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;call&nbsp;<a href="#shoots_server.ShootsServer-do_put">do_put</a>()&nbsp;to&nbsp;get&nbsp;back&nbsp;a&nbsp;writer<br>
+&nbsp;&nbsp;&nbsp;&nbsp;writer,&nbsp;_&nbsp;=&nbsp;self.<strong>client</strong>.<a href="#shoots_server.ShootsServer-do_put">do_put</a>(descriptor,&nbsp;table.schema)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;write&nbsp;the&nbsp;data&nbsp;and&nbsp;close&nbsp;the&nbsp;writer<br>
+&nbsp;&nbsp;&nbsp;&nbsp;writer.write_table(table)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;writer.close()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;```</tt></dd></dl>
+
+<dl><dt><a name="ShootsServer-list_actions"><strong>list_actions</strong></a>(self, context)</dt><dd><tt>Lists&nbsp;all&nbsp;available&nbsp;actions&nbsp;that&nbsp;the&nbsp;server&nbsp;can&nbsp;perform.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;context:&nbsp;The&nbsp;server&nbsp;context.<br>
+&nbsp;<br>
+Returns:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;List[flight.ActionType]:&nbsp;A&nbsp;list&nbsp;of&nbsp;available&nbsp;actions.</tt></dd></dl>
+
+<dl><dt><a name="ShootsServer-list_flights"><strong>list_flights</strong></a>(self, context, criteria)</dt><dd><tt>Lists&nbsp;available&nbsp;dataframes&nbsp;based&nbsp;on&nbsp;given&nbsp;criteria.<br>
+&nbsp;<br>
+You&nbsp;can&nbsp;optionally&nbsp;specify&nbsp;a&nbsp;bucket&nbsp;name&nbsp;to&nbsp;list&nbsp;dataframes&nbsp;in&nbsp;the&nbsp;specified&nbsp;bucket.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;criteria:&nbsp;Criteria&nbsp;to&nbsp;filter&nbsp;datasets.<br>
+&nbsp;<br>
+Yields:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;flight.FlightInfo:&nbsp;Information&nbsp;about&nbsp;each&nbsp;available&nbsp;flight&nbsp;(dataset).<br>
+&nbsp;<br>
+Example:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;```python<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;create&nbsp;the&nbsp;criteria.&nbsp;bucket&nbsp;can&nbsp;be&nbsp;None<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;criteria_data&nbsp;=&nbsp;{"bucket":"my_bucket",&nbsp;"regex":None}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;criateria_bytes&nbsp;=&nbsp;json.dumps(descriptor_data).encode()<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;get&nbsp;the&nbsp;list&nbsp;of&nbsp;FlightInfos.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;flights&nbsp;=&nbsp;self.<strong>client</strong>.<a href="#shoots_server.ShootsServer-list_flights">list_flights</a>(criteria=descriptor_bytes)<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;iterate&nbsp;the&nbsp;FlightInfos<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;flight&nbsp;in&nbsp;flights:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print(flight.descriptor.path[0].decode(),&nbsp;flight.schema)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;```<br>
+&nbsp;<br>
+Note:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;regex&nbsp;criteria&nbsp;is&nbsp;not&nbsp;yet&nbsp;implemented&nbsp;on&nbsp;the&nbsp;server.</tt></dd></dl>
+
+<dl><dt><a name="ShootsServer-serve"><strong>serve</strong></a>(self)</dt><dd><tt>Serve&nbsp;until&nbsp;shutdown&nbsp;is&nbsp;called.</tt></dd></dl>
+
+<dl><dt><a name="ShootsServer-shutdown"><strong>shutdown</strong></a>(self)</dt><dd><tt>Gracefully&nbsp;shuts&nbsp;down&nbsp;the&nbsp;server.<br>
+&nbsp;<br>
+Note:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#shoots_server.ShootsServer-shutdown">shutdown</a>()&nbsp;is&nbsp;not&nbsp;exposed&nbsp;to&nbsp;the&nbsp;FlightClient,&nbsp;but&nbsp;it&nbsp;can&nbsp;be&nbsp;accessed&nbsp;via&nbsp;do_action<br>
+&nbsp;<br>
+Example:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;```python<br>
+&nbsp;&nbsp;&nbsp;&nbsp;action&nbsp;=&nbsp;Action("shutdown",json.dumps({}).encode())<br>
+&nbsp;&nbsp;&nbsp;&nbsp;result&nbsp;=&nbsp;self.<strong>client</strong>.<a href="#shoots_server.ShootsServer-do_action">do_action</a>(action)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;r&nbsp;in&nbsp;res:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print(r.body.to_pybytes().decode())<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;prints&nbsp;["shutdown&nbsp;command&nbsp;received"]<br>
+&nbsp;&nbsp;&nbsp;&nbsp;```</tt></dd></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<hr>
+Methods inherited from <a href="pyarrow._flight.html#FlightServerBase">pyarrow._flight.FlightServerBase</a>:<br>
+<dl><dt><a name="ShootsServer-__enter__"><strong>__enter__</strong></a>(...)</dt><dd><tt>FlightServerBase.<a href="#shoots_server.ShootsServer-__enter__">__enter__</a>(self)</tt></dd></dl>
+
+<dl><dt><a name="ShootsServer-__exit__"><strong>__exit__</strong></a>(...)</dt><dd><tt>FlightServerBase.<a href="#shoots_server.ShootsServer-__exit__">__exit__</a>(self,&nbsp;exc_type,&nbsp;exc_value,&nbsp;traceback)</tt></dd></dl>
+
+<dl><dt><a name="ShootsServer-__reduce__"><strong>__reduce__</strong></a> = __reduce_cython__(...)</dt><dd><tt>FlightServerBase.__reduce_cython__(self)</tt></dd></dl>
+
+<dl><dt><a name="ShootsServer-__setstate__"><strong>__setstate__</strong></a> = __setstate_cython__(...)</dt><dd><tt>FlightServerBase.__setstate_cython__(self,&nbsp;__pyx_state)</tt></dd></dl>
+
+<dl><dt><a name="ShootsServer-do_exchange"><strong>do_exchange</strong></a>(...)</dt><dd><tt>FlightServerBase.<a href="#shoots_server.ShootsServer-do_exchange">do_exchange</a>(self,&nbsp;context,&nbsp;descriptor,&nbsp;reader,&nbsp;writer)<br>
+Write&nbsp;data&nbsp;to&nbsp;a&nbsp;flight.<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Applications&nbsp;should&nbsp;override&nbsp;this&nbsp;method&nbsp;to&nbsp;implement&nbsp;their<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;own&nbsp;behavior.&nbsp;The&nbsp;default&nbsp;method&nbsp;raises&nbsp;a&nbsp;NotImplementedError.<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Parameters<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;----------<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;context&nbsp;:&nbsp;ServerCallContext<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Common&nbsp;contextual&nbsp;information.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;descriptor&nbsp;:&nbsp;FlightDescriptor<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;descriptor&nbsp;for&nbsp;the&nbsp;flight&nbsp;provided&nbsp;by&nbsp;the&nbsp;client.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;reader&nbsp;:&nbsp;MetadataRecordBatchReader<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A&nbsp;reader&nbsp;for&nbsp;data&nbsp;uploaded&nbsp;by&nbsp;the&nbsp;client.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;writer&nbsp;:&nbsp;MetadataRecordBatchWriter<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A&nbsp;writer&nbsp;to&nbsp;send&nbsp;responses&nbsp;to&nbsp;the&nbsp;client.</tt></dd></dl>
+
+<dl><dt><a name="ShootsServer-get_flight_info"><strong>get_flight_info</strong></a>(...)</dt><dd><tt>FlightServerBase.<a href="#shoots_server.ShootsServer-get_flight_info">get_flight_info</a>(self,&nbsp;context,&nbsp;descriptor)<br>
+Get&nbsp;information&nbsp;about&nbsp;a&nbsp;flight.<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Applications&nbsp;should&nbsp;override&nbsp;this&nbsp;method&nbsp;to&nbsp;implement&nbsp;their<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;own&nbsp;behavior.&nbsp;The&nbsp;default&nbsp;method&nbsp;raises&nbsp;a&nbsp;NotImplementedError.<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Parameters<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;----------<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;context&nbsp;:&nbsp;ServerCallContext<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Common&nbsp;contextual&nbsp;information.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;descriptor&nbsp;:&nbsp;FlightDescriptor<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;descriptor&nbsp;for&nbsp;the&nbsp;flight&nbsp;provided&nbsp;by&nbsp;the&nbsp;client.<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Returns<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-------<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;FlightInfo</tt></dd></dl>
+
+<dl><dt><a name="ShootsServer-get_schema"><strong>get_schema</strong></a>(...)</dt><dd><tt>FlightServerBase.<a href="#shoots_server.ShootsServer-get_schema">get_schema</a>(self,&nbsp;context,&nbsp;descriptor)<br>
+Get&nbsp;the&nbsp;schema&nbsp;of&nbsp;a&nbsp;flight.<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Applications&nbsp;should&nbsp;override&nbsp;this&nbsp;method&nbsp;to&nbsp;implement&nbsp;their<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;own&nbsp;behavior.&nbsp;The&nbsp;default&nbsp;method&nbsp;raises&nbsp;a&nbsp;NotImplementedError.<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Parameters<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;----------<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;context&nbsp;:&nbsp;ServerCallContext<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Common&nbsp;contextual&nbsp;information.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;descriptor&nbsp;:&nbsp;FlightDescriptor<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;descriptor&nbsp;for&nbsp;the&nbsp;flight&nbsp;provided&nbsp;by&nbsp;the&nbsp;client.<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Returns<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-------<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Schema</tt></dd></dl>
+
+<dl><dt><a name="ShootsServer-run"><strong>run</strong></a>(...)</dt><dd><tt>FlightServerBase.<a href="#shoots_server.ShootsServer-run">run</a>(self)<br>
+Block&nbsp;until&nbsp;the&nbsp;server&nbsp;shuts&nbsp;down.<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;..&nbsp;deprecated::&nbsp;0.15.0<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Use&nbsp;the&nbsp;``FlightServer.serve``&nbsp;method&nbsp;instead</tt></dd></dl>
+
+<dl><dt><a name="ShootsServer-wait"><strong>wait</strong></a>(...)</dt><dd><tt>FlightServerBase.<a href="#shoots_server.ShootsServer-wait">wait</a>(self)<br>
+Block&nbsp;until&nbsp;server&nbsp;is&nbsp;terminated&nbsp;with&nbsp;shutdown.</tt></dd></dl>
+
+<hr>
+Static methods inherited from <a href="pyarrow._flight.html#FlightServerBase">pyarrow._flight.FlightServerBase</a>:<br>
+<dl><dt><a name="ShootsServer-__new__"><strong>__new__</strong></a>(*args, **kwargs)<font color="#909090"><font face="helvetica, arial"> from <a href="builtins.html#type">builtins.type</a></font></font></dt><dd><tt>Create&nbsp;and&nbsp;return&nbsp;a&nbsp;new&nbsp;object.&nbsp;&nbsp;See&nbsp;help(type)&nbsp;for&nbsp;accurate&nbsp;signature.</tt></dd></dl>
+
+<hr>
+Data descriptors inherited from <a href="pyarrow._flight.html#FlightServerBase">pyarrow._flight.FlightServerBase</a>:<br>
+<dl><dt><strong>port</strong></dt>
+<dd><tt>Get&nbsp;the&nbsp;port&nbsp;that&nbsp;this&nbsp;server&nbsp;is&nbsp;listening&nbsp;on.<br>
+&nbsp;<br>
+Returns&nbsp;a&nbsp;non-positive&nbsp;value&nbsp;if&nbsp;the&nbsp;operation&nbsp;is&nbsp;invalid<br>
+(e.g.&nbsp;init()&nbsp;was&nbsp;not&nbsp;called&nbsp;or&nbsp;server&nbsp;is&nbsp;listening&nbsp;on&nbsp;a&nbsp;domain<br>
+socket).</tt></dd>
+</dl>
+<hr>
+Data and other attributes inherited from <a href="pyarrow._flight.html#FlightServerBase">pyarrow._flight.FlightServerBase</a>:<br>
+<dl><dt><strong>__pyx_vtable__</strong> = &lt;capsule object NULL&gt;</dl>
+
+</td></tr></table>
+</body></html>
