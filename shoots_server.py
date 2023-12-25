@@ -15,6 +15,9 @@ class ShootsServer(flight.FlightServerBase):
     Attributes:
         location (pyarrow.flight.Location): The server location.
         bucket_dir (str): Directory path for storing parquet datasets.
+
+    Note:
+        You most likely don't want to use the server directly, accept for starting it up. It is easiest to interact with the server via ShootsClient.
     """
 
     def __init__(self, location, bucket_dir, *args, **kwargs):
