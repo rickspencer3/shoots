@@ -434,7 +434,7 @@ class ShootsClient:
                 rule: str, 
                 time_col: str,
                 aggregation_func: str,
-                mode: PutMode = PutMode.APPEND,
+                mode: Optional[PutMode] = PutMode.APPEND,
                 source_bucket: Optional[str] = None,
                 target_bucket: Optional[str] = None):
         """

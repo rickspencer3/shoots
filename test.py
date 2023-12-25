@@ -138,7 +138,7 @@ class TestClient(unittest.TestCase):
         self.client.delete("million")
         self.client.delete("thousand")
 
-    def test_resample_mode(self):
+    def test_resample_append(self):
         num_rows = 1000000
         df = self._generate_dataframe(num_rows)
 
@@ -190,8 +190,7 @@ class TestClient(unittest.TestCase):
                              time_col="timestamp",
                              aggregation_func="mean",
                              source_bucket=source_bucket,
-                             target_bucket=target_bucket
-                             )
+                             target_bucket=target_bucket)
         
         self.assertEqual(res["target_cols"], 1000)
 
