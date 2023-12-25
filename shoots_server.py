@@ -278,12 +278,14 @@ class ShootsServer(flight.FlightServerBase):
         rule = data["rule"]
         time_col = data["time_col"]
         aggregation_func = data["aggregation_func"]
-        bucket = None
+        source_bucket = data["source_bucket"]
+        target_bucket = data["target_bucket"]
+        mode = data["mode"]
 
         source_cols = -1
         target_cols = -1
 
-        file_name = self._create_file_path(source, bucket)
+        file_name = self._create_file_path(source, source_bucket)
         
         table = pq.read_table(file_name)
         df_source = table.to_pandas()
@@ -296,7 +298,7 @@ class ShootsServer(flight.FlightServerBase):
         df_target = method()
         target_cols = df_target.shape[0]
         table = pa.Table.from_pandas(df_target)
-        self._write_arrow_table(target, "error",bucket, table)
+        self._write_arrow_table(target, mode ,target_bucket, table)
 
         return self._flight_result_from_dict({"source_cols":source_cols,
                                               "target_cols":target_cols})
@@ -385,7 +387,7 @@ class ShootsServer(flight.FlightServerBase):
         try:
             os.remove(file_path)
         except FileNotFoundError:
-            raise flight.FlightServerError(f"Dataset {name} not found",
+            raise flight.FlightServerError(f"Dataframe {name} not found",
                                 extra_info="No Such Dataset")
         except PermissionError:
             raise flight.FlightUnauthorizedError(f"Insufficent permisions to delete {name}")
