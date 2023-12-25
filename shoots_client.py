@@ -92,6 +92,9 @@ class ResampleRequest(BaseModel):
     rule: str
     time_col: str
     aggregation_func: str
+    mode: PutMode = PutMode.APPEND
+    source_bucket: Optional[str] = None
+    target_bucket_bucket: Optional[str] = None
 
 class GetRequest(BaseModel):
     """
@@ -426,24 +429,34 @@ class ShootsClient:
         return self._flight_result_to_string(result)
     
     def resample(self, 
-                 source: str, 
-                 target: str, 
-                 rule: str, 
-                 time_col: str,
-                 aggregation_func: str):
+                source: str, 
+                target: str, 
+                rule: str, 
+                time_col: str,
+                aggregation_func: str,
+                mode: PutMode = PutMode.APPEND,
+                source_bucket: Optional[str] = None,
+                target_bucket: Optional[str] = None):
         
         req = ResampleRequest(
                 source=source,
                 target=target,
                 rule=rule,
                 time_col=time_col,
-                aggregation_func=aggregation_func)
+                aggregation_func=aggregation_func,
+                mode=mode,
+                source_bucket=source_bucket,
+                target_bucket=target_bucket)
         
         resample_data = {"source":req.source,
                 "target":req.target,
                 "rule":req.rule,
                 "time_col":req.time_col,
-                "aggregation_func":req.aggregation_func}
+                "aggregation_func":req.aggregation_func,
+                "mode":mode.value,
+                "source_bucket":source_bucket,
+                "target_bucket":target_bucket}
+        
         bytes = json.dumps(resample_data).encode()
         action = Action("resample",bytes)
         result = self.client.do_action(action)
