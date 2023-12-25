@@ -233,15 +233,17 @@ class ShootsServer(flight.FlightServerBase):
             The different actions require different payloads.
 
             ```python
+            client = FlightClient(f"grpc://{config.host}:{config.port}")
+
             # delete example with optional bucket name
             action_description = json.dumps({"name":"my_dataframe", "bucket":"my_bucket"}).encode()
             action = Action("delete",action_description)
-            self.client.do_action(action)
+            client.do_action(action)
 
             # buckets example
             bytes = json.dumps({}).encode()
             action = Action("buckets",bytes)
-            result = self.client.do_action(action)
+            result = client.do_action(action)
             for r in result:
                 print(r.body.to_pybytes().decode())
 
@@ -249,12 +251,23 @@ class ShootsServer(flight.FlightServerBase):
             action_obj = {"name":"my_bucket, "mode":"error"}
             bytes = json.dumps(action_obj).encode()
             action = Action("delete_bucket",bytes)
-            self.client.do_action(action)
+            client.do_action(action)
 
             # shutdown example
             bytes = json.dumps({}).encode()
             action = Action("shutdown", bytes)
-            self.client.do_action(action)
+            client.do_action(action)
+
+            # resample example
+            resample_data = {"source":"my_original_dataframe",
+            "target":"my_new_dataframe",
+            "rule":"1s",
+            "time_col":"my_timestamp_column",
+            "aggregation_func":"mean"}
+        
+            bytes = json.dumps(resample_data).encode()
+            action = Action("resample",bytes)
+            result = client.do_action(action)
             ```
         """
 
@@ -337,7 +350,8 @@ class ShootsServer(flight.FlightServerBase):
             ("delete", "Delete a dataframe"),
             ("buckets", "List buckets"),
             ("delete_bucket", "Delete a bucket"),
-            ("shutdown", "Shutdown the server")
+            ("shutdown", "Shutdown the server"),
+            ("resample", "Conversion and resampling of time series.")
         ]
 
         return [flight.ActionType(action, description) for action, description in actions]
