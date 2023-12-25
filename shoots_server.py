@@ -144,6 +144,9 @@ class ShootsServer(flight.FlightServerBase):
         bucket = command["bucket"]
 
         data_table = reader.read_all()
+        self._write_arrow_table(name, mode, bucket, data_table) 
+
+    def _write_arrow_table(self, name, mode, bucket, data_table):
         file_path = self._create_file_path(name, bucket)
         if os.path.exists(file_path):
             if mode == "append":
@@ -156,7 +159,7 @@ class ShootsServer(flight.FlightServerBase):
             else:
                 pq.write_table(data_table, file_path)
         else:
-            pq.write_table(data_table, file_path) 
+            pq.write_table(data_table, file_path)
 
     def list_flights(self, context, criteria):
         """
@@ -230,15 +233,17 @@ class ShootsServer(flight.FlightServerBase):
             The different actions require different payloads.
 
             ```python
+            client = FlightClient(f"grpc://{config.host}:{config.port}")
+
             # delete example with optional bucket name
             action_description = json.dumps({"name":"my_dataframe", "bucket":"my_bucket"}).encode()
             action = Action("delete",action_description)
-            self.client.do_action(action)
+            client.do_action(action)
 
             # buckets example
             bytes = json.dumps({}).encode()
             action = Action("buckets",bytes)
-            result = self.client.do_action(action)
+            result = client.do_action(action)
             for r in result:
                 print(r.body.to_pybytes().decode())
 
@@ -246,12 +251,23 @@ class ShootsServer(flight.FlightServerBase):
             action_obj = {"name":"my_bucket, "mode":"error"}
             bytes = json.dumps(action_obj).encode()
             action = Action("delete_bucket",bytes)
-            self.client.do_action(action)
+            client.do_action(action)
 
             # shutdown example
             bytes = json.dumps({}).encode()
             action = Action("shutdown", bytes)
-            self.client.do_action(action)
+            client.do_action(action)
+
+            # resample example
+            resample_data = {"source":"my_original_dataframe",
+            "target":"my_new_dataframe",
+            "rule":"1s",
+            "time_col":"my_timestamp_column",
+            "aggregation_func":"mean"}
+        
+            bytes = json.dumps(resample_data).encode()
+            action = Action("resample",bytes)
+            result = client.do_action(action)
             ```
         """
 
@@ -266,6 +282,58 @@ class ShootsServer(flight.FlightServerBase):
             return self._delete_bucket(data)
         if action == "shutdown":
             return self.shutdown()
+        if action == "resample":
+            return self._resample(data)
+    
+    def _resample(self, data):
+        source = data["source"]
+        target = data["target"]
+        rule = data["rule"]
+        time_col = data["time_col"]
+        aggregation_func = data["aggregation_func"]
+        source_bucket = data["source_bucket"]
+        target_bucket = data["target_bucket"]
+        mode = data["mode"]
+
+        source_cols = -1
+        target_cols = -1
+
+        file_name = self._create_file_path(source, source_bucket)
+        
+        table = pq.read_table(file_name)
+        df_source = table.to_pandas()
+        source_cols = df_source.shape[0]
+
+        df_source.set_index(time_col, inplace=True)
+        df_source = df_source.resample(rule)
+
+        method = getattr(df_source, aggregation_func, None)
+        df_target = method()
+        target_cols = df_target.shape[0]
+ 
+        # need to do some dancing here to append data because
+        # the parquet file stores the timestamp column in milliseconds, but
+        # pandas only understands nanoseconds
+        table = pa.Table.from_pandas(df_target)
+        if mode != "append":    
+            self._write_arrow_table(target, mode ,target_bucket, table)
+        else:
+            file_path = self._create_file_path(target, target_bucket)
+            if os.path.exists(file_path):
+                existing_table = pq.read_table(file_path)
+                converted_timestamp_col = table.column(time_col).cast(pa.timestamp('us'))
+
+                table = table.set_column(table.schema.get_field_index(time_col),
+                                        pa.field(time_col, pa.timestamp('us')),
+                                        converted_timestamp_col)
+                data_table = pa.concat_tables([existing_table, table])
+
+                pq.write_table(data_table, file_path)
+            else:
+                self._write_arrow_table(target, mode ,target_bucket, table)
+
+        return self._flight_result_from_dict({"source_cols":source_cols,
+                                              "target_cols":target_cols})
 
     def list_actions(self, context):
         """
@@ -282,7 +350,8 @@ class ShootsServer(flight.FlightServerBase):
             ("delete", "Delete a dataframe"),
             ("buckets", "List buckets"),
             ("delete_bucket", "Delete a bucket"),
-            ("shutdown", "Shutdown the server")
+            ("shutdown", "Shutdown the server"),
+            ("resample", "Conversion and resampling of time series.")
         ]
 
         return [flight.ActionType(action, description) for action, description in actions]
@@ -351,7 +420,7 @@ class ShootsServer(flight.FlightServerBase):
         try:
             os.remove(file_path)
         except FileNotFoundError:
-            raise flight.FlightServerError(f"Dataset {name} not found",
+            raise flight.FlightServerError(f"Dataframe {name} not found",
                                 extra_info="No Such Dataset")
         except PermissionError:
             raise flight.FlightUnauthorizedError(f"Insufficent permisions to delete {name}")

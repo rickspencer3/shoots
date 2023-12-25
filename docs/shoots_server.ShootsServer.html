@@ -57,15 +57,17 @@ Example:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;different&nbsp;actions&nbsp;require&nbsp;different&nbsp;payloads.<br>
 &nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;```python<br>
+&nbsp;&nbsp;&nbsp;&nbsp;client&nbsp;=&nbsp;FlightClient(f"grpc://{config.host}:{config.port}")<br>
+&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;delete&nbsp;example&nbsp;with&nbsp;optional&nbsp;bucket&nbsp;name<br>
 &nbsp;&nbsp;&nbsp;&nbsp;action_description&nbsp;=&nbsp;json.dumps({"name":"my_dataframe",&nbsp;"bucket":"my_bucket"}).encode()<br>
 &nbsp;&nbsp;&nbsp;&nbsp;action&nbsp;=&nbsp;Action("delete",action_description)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;self.<strong>client</strong>.<a href="#shoots_server.ShootsServer-do_action">do_action</a>(action)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;client.<a href="#shoots_server.ShootsServer-do_action">do_action</a>(action)<br>
 &nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;buckets&nbsp;example<br>
 &nbsp;&nbsp;&nbsp;&nbsp;bytes&nbsp;=&nbsp;json.dumps({}).encode()<br>
 &nbsp;&nbsp;&nbsp;&nbsp;action&nbsp;=&nbsp;Action("buckets",bytes)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;result&nbsp;=&nbsp;self.<strong>client</strong>.<a href="#shoots_server.ShootsServer-do_action">do_action</a>(action)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;result&nbsp;=&nbsp;client.<a href="#shoots_server.ShootsServer-do_action">do_action</a>(action)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;r&nbsp;in&nbsp;result:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print(r.body.to_pybytes().decode())<br>
 &nbsp;<br>
@@ -73,12 +75,23 @@ Example:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;action_obj&nbsp;=&nbsp;{"name":"my_bucket,&nbsp;"mode":"error"}<br>
 &nbsp;&nbsp;&nbsp;&nbsp;bytes&nbsp;=&nbsp;json.dumps(action_obj).encode()<br>
 &nbsp;&nbsp;&nbsp;&nbsp;action&nbsp;=&nbsp;Action("delete_bucket",bytes)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;self.<strong>client</strong>.<a href="#shoots_server.ShootsServer-do_action">do_action</a>(action)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;client.<a href="#shoots_server.ShootsServer-do_action">do_action</a>(action)<br>
 &nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;shutdown&nbsp;example<br>
 &nbsp;&nbsp;&nbsp;&nbsp;bytes&nbsp;=&nbsp;json.dumps({}).encode()<br>
 &nbsp;&nbsp;&nbsp;&nbsp;action&nbsp;=&nbsp;Action("shutdown",&nbsp;bytes)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;self.<strong>client</strong>.<a href="#shoots_server.ShootsServer-do_action">do_action</a>(action)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;client.<a href="#shoots_server.ShootsServer-do_action">do_action</a>(action)<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;resample&nbsp;example<br>
+&nbsp;&nbsp;&nbsp;&nbsp;resample_data&nbsp;=&nbsp;{"source":"my_original_dataframe",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"target":"my_new_dataframe",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"rule":"1s",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"time_col":"my_timestamp_column",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"aggregation_func":"mean"}<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;bytes&nbsp;=&nbsp;json.dumps(resample_data).encode()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;action&nbsp;=&nbsp;Action("resample",bytes)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;result&nbsp;=&nbsp;client.<a href="#shoots_server.ShootsServer-do_action">do_action</a>(action)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;```</tt></dd></dl>
 
 <dl><dt><a name="ShootsServer-do_get"><strong>do_get</strong></a>(self, context, ticket)</dt><dd><tt>Handles&nbsp;the&nbsp;retrieval&nbsp;of&nbsp;a&nbsp;dataframe&nbsp;based&nbsp;on&nbsp;the&nbsp;given&nbsp;ticket.<br>

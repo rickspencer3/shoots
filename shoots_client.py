@@ -83,6 +83,19 @@ class ListRequest(BaseModel):
     bucket: Optional[str] = None
     regex: Optional[str] = None
 
+class ResampleRequest(BaseModel):
+    """
+    Internal class for configuring a resample request.
+    """
+    source: str
+    target: str
+    rule: str
+    time_col: str
+    aggregation_func: str
+    mode: PutMode = PutMode.APPEND
+    source_bucket: Optional[str] = None
+    target_bucket_bucket: Optional[str] = None
+
 class GetRequest(BaseModel):
     """
     Internal class for configuring a get request.
@@ -415,6 +428,70 @@ class ShootsClient:
 
         return self._flight_result_to_string(result)
     
+    def resample(self, 
+                source: str, 
+                target: str, 
+                rule: str, 
+                time_col: str,
+                aggregation_func: str,
+                mode: PutMode = PutMode.APPEND,
+                source_bucket: Optional[str] = None,
+                target_bucket: Optional[str] = None):
+        """
+        Convenience method for frequency conversion and resampling of time series on the server.
+
+        ```resample()``` does not require a round trip of the data from the server, but rather performs
+        the operation on the server.
+
+        Args:
+            source (str): The name of the dataframe to resample
+            target (str):  The name of the resampled dataframe
+            rule (str): String representation of time delta for windowing (example: 1s)
+            time_col (str): The name of the time stamp column to window on
+            aggregation_func (str): The name of the function to aggregate (examples: mean, max, count)
+            mode (Optional[PutMode]): Behavior if a target dataframe already exists (defults to APPEND)
+            source_bucket (Optional[str]): Bucket containing the source dataframe, if any
+            target_bucket (Optional[str]): Bucket for where to store the resampled dataframe, if any
+            
+        Raises:
+            FlightServerError
+        
+        Example:
+            ```python
+            self.client.resample(source="my_source_dataframe", 
+                                target="my_resampled_dataframe",
+                                rule="10s",
+                                time_col="timestamp",
+                                aggregation_func="mean",
+                                mode=PutMode.APPEND)
+            ```
+
+        """
+        
+        req = ResampleRequest(
+                source=source,
+                target=target,
+                rule=rule,
+                time_col=time_col,
+                aggregation_func=aggregation_func,
+                mode=mode,
+                source_bucket=source_bucket,
+                target_bucket=target_bucket)
+        
+        resample_data = {"source":req.source,
+                "target":req.target,
+                "rule":req.rule,
+                "time_col":req.time_col,
+                "aggregation_func":req.aggregation_func,
+                "mode":mode.value,
+                "source_bucket":source_bucket,
+                "target_bucket":target_bucket}
+        
+        bytes = json.dumps(resample_data).encode()
+        action = Action("resample",bytes)
+        result = self.client.do_action(action)
+        return json.loads(self._flight_result_to_string(result))
+      
     def _flight_result_to_list(self, result):
         list_string = None
         for r in result:

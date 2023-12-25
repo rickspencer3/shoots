@@ -2,6 +2,7 @@ from shoots_client import ShootsClient
 from shoots_server import ShootsServer
 from shoots_client import PutMode, BucketDeleteMode
 import pandas as pd
+import numpy as np
 from pyarrow.flight import FlightServerError, Location, FlightClient
 import threading
 import shutil
@@ -115,6 +116,102 @@ class TestClient(unittest.TestCase):
             raise
         self.client.delete("test1")
         self.client.delete("test2")
+
+    def test_resample_no_buckets(self):
+        num_rows = 1000000
+        df = self._generate_dataframe(num_rows)
+
+        self.client.put(name="million", dataframe=df)
+
+        res = self.client.resample(source="million", 
+                             target="thousand",
+                             rule="10s",
+                             time_col="timestamp",
+                             aggregation_func="mean"
+                             )
+        
+        self.assertEqual(res["target_cols"], 1000)
+
+        df_thousands = self.client.get("thousand")
+        self.assertEqual(df_thousands.shape[0], 1000)    
+
+        self.client.delete("million")
+        self.client.delete("thousand")
+
+    def test_resample_mode(self):
+        num_rows = 1000000
+        df = self._generate_dataframe(num_rows)
+
+        self.client.put(name="million", dataframe=df)
+
+        res = self.client.resample(source="million", 
+                             target="thousand",
+                             rule="10s",
+                             time_col="timestamp",
+                             aggregation_func="mean")
+        
+        self.assertEqual(res["target_cols"], 1000)
+
+        self.client.resample(source="million", 
+                             target="thousand",
+                             rule="10s",
+                             time_col="timestamp",
+                             aggregation_func="mean",
+                             mode=PutMode.REPLACE)
+
+        df_thousands = self.client.get("thousand")
+        self.assertEqual(df_thousands.shape[0], 1000)    
+
+
+        self.client.resample(source="million", 
+                             target="thousand",
+                             rule="10s",
+                             time_col="timestamp",
+                             aggregation_func="mean",
+                             mode=PutMode.APPEND)
+
+        df_thousands = self.client.get("thousand")
+        self.assertEqual(df_thousands.shape[0], 2000) 
+
+        self.client.delete("million")
+        self.client.delete("thousand")
+
+    def test_resample_with_buckets(self):
+        num_rows = 1000000
+        df = self._generate_dataframe(num_rows)
+
+        source_bucket="million_bucket"
+        target_bucket="thousand_bucket"
+        self.client.put(name="million", dataframe=df, bucket=source_bucket)
+
+        res = self.client.resample(source="million", 
+                             target="thousand",
+                             rule="10s",
+                             time_col="timestamp",
+                             aggregation_func="mean",
+                             source_bucket=source_bucket,
+                             target_bucket=target_bucket
+                             )
+        
+        self.assertEqual(res["target_cols"], 1000)
+
+        df_thousands = self.client.get("thousand",bucket=target_bucket)
+        self.assertEqual(df_thousands.shape[0], 1000)    
+
+        self.client.delete("million", bucket=source_bucket)
+        self.client.delete("thousand", bucket=target_bucket)
+
+    def _generate_dataframe(self, num_rows):
+        date_range_milliseconds = pd.date_range(start='2020-01-01', 
+                                                periods=num_rows, 
+                                                freq='10L')
+
+        df = pd.DataFrame({
+            'timestamp': date_range_milliseconds,
+            'data': np.random.randn(num_rows)  # Example data column with random numbers
+        })
+        
+        return df
 
     def test_list_with_bucket(self):
         self.client.put("test1",
