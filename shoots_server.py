@@ -365,11 +365,26 @@ class ShootsServer(flight.FlightServerBase):
         return [result]
 
     def shutdown(self):
-            shutdown_thread = threading.Thread(target=super(ShootsServer, self).shutdown)
-            shutdown_thread.start()
-            
-            print("Shutting down ...")
-            return self._list_to_flight_result(["shutdown command received"])
+        """
+        Gracefully shuts down the server.
+
+        Note:
+            shutdown() is not exposed to the FlightClient, but it can be accessed via do_action
+
+        Example:
+            ```python
+            action = Action("shutdown",json.dumps({}).encode())
+            result = self.client.do_action(action)
+            for r in res:
+                print(r.body.to_pybytes().decode())
+                # prints ["shutdown command received"]
+            ```
+        """
+        shutdown_thread = threading.Thread(target=super(ShootsServer, self).shutdown)
+        shutdown_thread.start()
+        
+        print("Shutting down ...")
+        return self._list_to_flight_result(["shutdown command received"])
 
     def serve(self):
         """
