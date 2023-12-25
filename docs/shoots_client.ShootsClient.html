@@ -217,6 +217,34 @@ Note:<br>
 &nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;first&nbsp;time&nbsp;a&nbsp;<a href="#shoots_client.ShootsClient-put">put</a>()&nbsp;is&nbsp;called&nbsp;with&nbsp;a&nbsp;bucket&nbsp;name,&nbsp;the&nbsp;bucket&nbsp;will&nbsp;be&nbsp;automatically&nbsp;created.</tt></dd></dl>
 
+<dl><dt><a name="ShootsClient-resample"><strong>resample</strong></a>(self, source: str, target: str, rule: str, time_col: str, aggregation_func: str, mode: shoots_client.PutMode = &lt;PutMode.APPEND: 'append'&gt;, source_bucket: Optional[str] = None, target_bucket: Optional[str] = None)</dt><dd><tt>Convenience&nbsp;method&nbsp;for&nbsp;frequency&nbsp;conversion&nbsp;and&nbsp;resampling&nbsp;of&nbsp;time&nbsp;series&nbsp;on&nbsp;the&nbsp;server.<br>
+&nbsp;<br>
+```<a href="#shoots_client.ShootsClient-resample">resample</a>()```&nbsp;does&nbsp;not&nbsp;require&nbsp;a&nbsp;round&nbsp;trip&nbsp;of&nbsp;the&nbsp;data&nbsp;from&nbsp;the&nbsp;server,&nbsp;but&nbsp;rather&nbsp;performs<br>
+the&nbsp;operation&nbsp;on&nbsp;the&nbsp;server.<br>
+&nbsp;<br>
+Args:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;source&nbsp;(str):&nbsp;The&nbsp;name&nbsp;of&nbsp;the&nbsp;dataframe&nbsp;to&nbsp;resample<br>
+&nbsp;&nbsp;&nbsp;&nbsp;target&nbsp;(str):&nbsp;&nbsp;The&nbsp;name&nbsp;of&nbsp;the&nbsp;resampled&nbsp;dataframe<br>
+&nbsp;&nbsp;&nbsp;&nbsp;rule&nbsp;(str):&nbsp;String&nbsp;representation&nbsp;of&nbsp;time&nbsp;delta&nbsp;for&nbsp;windowing&nbsp;(example:&nbsp;1s)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;time_col&nbsp;(str):&nbsp;The&nbsp;name&nbsp;of&nbsp;the&nbsp;time&nbsp;stamp&nbsp;column&nbsp;to&nbsp;window&nbsp;on<br>
+&nbsp;&nbsp;&nbsp;&nbsp;aggregation_func&nbsp;(str):&nbsp;The&nbsp;name&nbsp;of&nbsp;the&nbsp;function&nbsp;to&nbsp;aggregate&nbsp;(examples:&nbsp;mean,&nbsp;max,&nbsp;count)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;mode&nbsp;(Optional[PutMode]):&nbsp;Behavior&nbsp;if&nbsp;a&nbsp;target&nbsp;dataframe&nbsp;already&nbsp;exists&nbsp;(defults&nbsp;to&nbsp;APPEND)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;source_bucket&nbsp;(Optional[str]):&nbsp;Bucket&nbsp;containing&nbsp;the&nbsp;source&nbsp;dataframe,&nbsp;if&nbsp;any<br>
+&nbsp;&nbsp;&nbsp;&nbsp;target_bucket&nbsp;(Optional[str]):&nbsp;Bucket&nbsp;for&nbsp;where&nbsp;to&nbsp;store&nbsp;the&nbsp;resampled&nbsp;dataframe,&nbsp;if&nbsp;any<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<br>
+Raises:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;FlightServerError<br>
+&nbsp;<br>
+Example:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;```python<br>
+&nbsp;&nbsp;&nbsp;&nbsp;self.<strong>client</strong>.<a href="#shoots_client.ShootsClient-resample">resample</a>(source="my_source_dataframe",&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;target="my_resampled_dataframe",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;rule="10s",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;time_col="timestamp",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;aggregation_func="mean",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mode=PutMode.APPEND)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;```</tt></dd></dl>
+
 <dl><dt><a name="ShootsClient-shutdown"><strong>shutdown</strong></a>(self)</dt><dd><tt>Sends&nbsp;a&nbsp;shutdown&nbsp;request&nbsp;to&nbsp;the&nbsp;server.<br>
 &nbsp;<br>
 This&nbsp;method&nbsp;is&nbsp;used&nbsp;to&nbsp;send&nbsp;a&nbsp;command&nbsp;to&nbsp;the&nbsp;FlightServer&nbsp;to&nbsp;initiate&nbsp;its&nbsp;shutdown<br>
