@@ -138,6 +138,33 @@ class TestClient(unittest.TestCase):
         self.client.delete("million")
         self.client.delete("thousand")
 
+    def test_resample_mode(self):
+        num_rows = 1000000
+        df = self._generate_dataframe(num_rows)
+
+        self.client.put(name="million", dataframe=df)
+
+        res = self.client.resample(source="million", 
+                             target="thousand",
+                             rule="10s",
+                             time_col="timestamp",
+                             aggregation_func="mean")
+        
+        self.assertEqual(res["target_cols"], 1000)
+
+        self.client.resample(source="million", 
+                             target="thousand",
+                             rule="10s",
+                             time_col="timestamp",
+                             aggregation_func="mean",
+                             mode=PutMode.REPLACE)
+
+        df_thousands = self.client.get("thousand")
+        self.assertEqual(df_thousands.shape[0], 1000)    
+
+        self.client.delete("million")
+        self.client.delete("thousand")
+
     def test_resample_with_buckets(self):
         num_rows = 1000000
         df = self._generate_dataframe(num_rows)
