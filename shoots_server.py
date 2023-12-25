@@ -144,6 +144,9 @@ class ShootsServer(flight.FlightServerBase):
         bucket = command["bucket"]
 
         data_table = reader.read_all()
+        self._write_arrow_table(name, mode, bucket, data_table) 
+
+    def _write_arrow_table(self, name, mode, bucket, data_table):
         file_path = self._create_file_path(name, bucket)
         if os.path.exists(file_path):
             if mode == "append":
@@ -156,7 +159,7 @@ class ShootsServer(flight.FlightServerBase):
             else:
                 pq.write_table(data_table, file_path)
         else:
-            pq.write_table(data_table, file_path) 
+            pq.write_table(data_table, file_path)
 
     def list_flights(self, context, criteria):
         """
@@ -266,6 +269,37 @@ class ShootsServer(flight.FlightServerBase):
             return self._delete_bucket(data)
         if action == "shutdown":
             return self.shutdown()
+        if action == "resample":
+            return self._resample(data)
+    
+    def _resample(self, data):
+        source = data["source"]
+        target = data["target"]
+        rule = data["rule"]
+        time_col = data["time_col"]
+        aggregation_func = data["aggregation_func"]
+        bucket = None
+
+        source_cols = -1
+        target_cols = -1
+
+        file_name = self._create_file_path(source, bucket)
+        
+        table = pq.read_table(file_name)
+        df_source = table.to_pandas()
+        source_cols = df_source.shape[0]
+
+        df_source.set_index(time_col, inplace=True)
+        df_source = df_source.resample(rule)
+
+        method = getattr(df_source, aggregation_func, None)
+        df_target = method()
+        target_cols = df_target.shape[0]
+        table = pa.Table.from_pandas(df_target)
+        self._write_arrow_table(target, "error",bucket, table)
+
+        return self._flight_result_from_dict({"source_cols":source_cols,
+                                              "target_cols":target_cols})
 
     def list_actions(self, context):
         """

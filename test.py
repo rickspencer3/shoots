@@ -119,7 +119,9 @@ class TestClient(unittest.TestCase):
 
     def test_resample(self):
         num_rows = 1000000
-        date_range_milliseconds = pd.date_range(start='2020-01-01', periods=num_rows, freq='10L')
+        date_range_milliseconds = pd.date_range(start='2020-01-01', 
+                                                periods=num_rows, 
+                                                freq='10L')
 
         df = pd.DataFrame({
             'timestamp': date_range_milliseconds,
@@ -128,14 +130,16 @@ class TestClient(unittest.TestCase):
 
         self.client.put(name="million", dataframe=df)
 
-        self.client.resample(source="million", 
+        res = self.client.resample(source="million", 
                              target="thousand",
-                             rule="1s",
+                             rule="10s",
                              time_col="timestamp",
                              aggregation_func="mean"
                              )
-        res = self.client.get("thousand")
-        self.assertEqual(res.shape[0],1000)
+        self.assertEqual(res["target_cols"], 1000)
+
+        df_thousands = self.client.get("thousand")
+        self.assertEqual(df_thousands.shape[0], 1000)    
 
         self.client.delete("million")
         self.client.delete("thousand")

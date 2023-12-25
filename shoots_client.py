@@ -447,7 +447,7 @@ class ShootsClient:
         bytes = json.dumps(resample_data).encode()
         action = Action("resample",bytes)
         result = self.client.do_action(action)
-        return self._flight_result_to_string(result)
+        return json.loads(self._flight_result_to_string(result))
       
     def _flight_result_to_list(self, result):
         list_string = None
