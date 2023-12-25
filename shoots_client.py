@@ -437,6 +437,36 @@ class ShootsClient:
                 mode: PutMode = PutMode.APPEND,
                 source_bucket: Optional[str] = None,
                 target_bucket: Optional[str] = None):
+        """
+        Convenience method for frequency conversion and resampling of time series on the server.
+
+        ```resample()``` does not require a round trip of the data from the server, but rather performs
+        the operation on the server.
+
+        Args:
+            source (str): The name of the dataframe to resample
+            target (str):  The name of the resampled dataframe
+            rule (str): String representation of time delta for windowing (example: 1s)
+            time_col (str): The name of the time stamp column to window on
+            aggregation_func (str): The name of the function to aggregate (examples: mean, max, count)
+            mode (Optional[PutMode]): Behavior if a target dataframe already exists (defults to APPEND)
+            source_bucket (Optional[str]): Bucket containing the source dataframe, if any
+            target_bucket (Optional[str]): Bucket for where to store the resampled dataframe, if any
+            
+        Raises:
+            FlightServerError
+        
+        Example:
+            ```python
+            self.client.resample(source="my_source_dataframe", 
+                                target="my_resampled_dataframe",
+                                rule="10s",
+                                time_col="timestamp",
+                                aggregation_func="mean",
+                                mode=PutMode.APPEND)
+            ```
+
+        """
         
         req = ResampleRequest(
                 source=source,
