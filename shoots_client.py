@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ValidationError, validator
+from pydantic import BaseModel, ValidationError, validator, root_validator
 from pydantic_settings import BaseSettings
 from typing import Optional
 import pyarrow as pa
@@ -89,12 +89,30 @@ class ResampleRequest(BaseModel):
     """
     source: str
     target: str
-    rule: str
-    time_col: str
-    aggregation_func: str
+    rule: Optional[str] = None
+    time_col: Optional[str] = None
+    aggregation_func: Optional[str] = None
     mode: PutMode = PutMode.APPEND
     source_bucket: Optional[str] = None
     target_bucket_bucket: Optional[str] = None
+    sql: Optional[str] = None
+
+    @root_validator(pre=True)
+    def check_sql_and_fields(cls, values):
+        sql = values.get('sql')
+        rule = values.get('rule')
+        time_col = values.get('time_col')
+        aggregation_func = values.get('aggregation_func')
+
+        if sql is None:
+            if rule is None or time_col is None or aggregation_func is None:
+                raise ValueError("rule, time_col, and aggregation_func are required if sql is not provided")
+        else:
+            values['rule'] = None
+            values['time_col'] = None
+            values['aggregation_func'] = None
+
+        return values
 
 class GetRequest(BaseModel):
     """
@@ -431,14 +449,16 @@ class ShootsClient:
     def resample(self, 
                 source: str, 
                 target: str, 
-                rule: str, 
-                time_col: str,
-                aggregation_func: str,
+                rule: Optional[str] = None, 
+                time_col: Optional[str] = None,
+                aggregation_func: Optional[str] = None,
+                sql: Optional[str] = None,
                 mode: Optional[PutMode] = PutMode.APPEND,
                 source_bucket: Optional[str] = None,
                 target_bucket: Optional[str] = None):
         """
-        Convenience method for frequency conversion and resampling of time series on the server.
+        Resamples (a.k.a. downsamples) data on the server. Works with a provided SQL query, or, if the data is time series,
+        callers can supply a rule, time column, and aggregation function.
 
         ```resample()``` does not require a round trip of the data from the server, but rather performs
         the operation on the server.
@@ -446,13 +466,17 @@ class ShootsClient:
         Args:
             source (str): The name of the dataframe to resample
             target (str):  The name of the resampled dataframe
-            rule (str): String representation of time delta for windowing (example: 1s)
-            time_col (str): The name of the time stamp column to window on
-            aggregation_func (str): The name of the function to aggregate (examples: mean, max, count)
+            sql (str): A sql stream for selecting data from the source dataframe
             mode (Optional[PutMode]): Behavior if a target dataframe already exists (defults to APPEND)
             source_bucket (Optional[str]): Bucket containing the source dataframe, if any
             target_bucket (Optional[str]): Bucket for where to store the resampled dataframe, if any
-            
+
+            The following arguments are ignoed if the sql argument is provide, and required if not.
+            rule (str): String representation of time delta for windowing (example: 1s)
+            time_col (str): The name of the time stamp column to window on
+            aggregation_func (str): The name of the function to aggregate (examples: mean, max, count)
+
+
         Raises:
             FlightServerError
         
@@ -467,25 +491,30 @@ class ShootsClient:
             ```
 
         """
-        
+
         req = ResampleRequest(
                 source=source,
                 target=target,
+                sql=sql,
                 rule=rule,
                 time_col=time_col,
                 aggregation_func=aggregation_func,
                 mode=mode,
                 source_bucket=source_bucket,
                 target_bucket=target_bucket)
-        
+
         resample_data = {"source":req.source,
                 "target":req.target,
-                "rule":req.rule,
-                "time_col":req.time_col,
-                "aggregation_func":req.aggregation_func,
                 "mode":mode.value,
                 "source_bucket":source_bucket,
                 "target_bucket":target_bucket}
+        
+        if(sql):
+            resample_data["sql"] = req.sql
+        else:
+            resample_data["rule"] = req.rule
+            resample_data["time_col"] = req.time_col
+            resample_data["aggregation_func"] = req.aggregation_func
         
         bytes = json.dumps(resample_data).encode()
         action = Action("resample",bytes)
