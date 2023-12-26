@@ -491,7 +491,7 @@ class ShootsClient:
             ```
 
         """
-        
+
         req = ResampleRequest(
                 source=source,
                 target=target,
@@ -512,7 +512,7 @@ class ShootsClient:
         if(sql):
             resample_data["sql"] = req.sql
         else:
-            resample_data["rule"] = req.rule,
+            resample_data["rule"] = req.rule
             resample_data["time_col"] = req.time_col
             resample_data["aggregation_func"] = req.aggregation_func
         

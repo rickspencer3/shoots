@@ -79,23 +79,27 @@ class ShootsServer(flight.FlightServerBase):
             ticket_obj = json.loads(ticket.ticket.decode())
             name = ticket_obj["name"]
             bucket = ticket_obj["bucket"]
-            file_name = self._create_file_path(name, bucket)
+            file_path = self._create_file_path(name, bucket)
             if "sql" in ticket_obj:
                 sql_query = ticket_obj["sql"]
-                ctx = SessionContext()
-                ctx.register_parquet(name, file_name)
-                
-                result = ctx.sql(sql_query)
-                table = result.to_arrow_table()
+                table = self._get_arrow_table_from_sql(name, file_path, sql_query)
                 
                 return flight.RecordBatchStream(table)
             
             else:
-                table = pq.read_table(file_name)
+                table = pq.read_table(file_path)
                 return flight.RecordBatchStream(table)
             
         except Exception as e:
             raise flight.FlightServerError(extra_info=str(e))
+
+    def _get_arrow_table_from_sql(self, name, file_path, sql_query):
+        ctx = SessionContext()
+        ctx.register_parquet(name, file_path)
+                
+        result = ctx.sql(sql_query)
+        table = result.to_arrow_table()
+        return table
     
     def do_put(self, context, descriptor, reader, writer):
         """
@@ -258,7 +262,7 @@ class ShootsServer(flight.FlightServerBase):
             action = Action("shutdown", bytes)
             client.do_action(action)
 
-            # resample example
+            # resample time series example
             resample_data = {"source":"my_original_dataframe",
             "target":"my_new_dataframe",
             "rule":"1s",
@@ -268,6 +272,16 @@ class ShootsServer(flight.FlightServerBase):
             bytes = json.dumps(resample_data).encode()
             action = Action("resample",bytes)
             result = client.do_action(action)
+
+            # resample with a sql query example
+            resample_data = {"source":"my_original_dataframe",
+            "target":"my_new_dataframe",
+            "sql":"SElECT * FROM my_original_dataframe LIMIT 10"}
+        
+            bytes = json.dumps(resample_data).encode()
+            action = Action("resample",bytes)
+            result = client.do_action(action)
+
             ```
         """
 
@@ -284,9 +298,25 @@ class ShootsServer(flight.FlightServerBase):
             return self.shutdown()
         if action == "resample":
             if data.get("sql",False):
-                return self._flight_result_from_dict({"target_cols":-1})
+                return self._resample_with_sql(data)
             else:
                 return self._resample_time_series(data)
+    
+    def _resample_with_sql(self, data):
+        source = data["source"]
+        target = data["target"]
+        source_bucket = data["source_bucket"]
+        target_bucket = data["target_bucket"]
+        sql = data["sql"]
+        mode = data["mode"]
+
+        target_rows = -1
+
+        file_path = self._create_file_path(source, source_bucket)
+        table = self._get_arrow_table_from_sql(source, file_path, sql)
+        target_rows = table.num_rows
+        self._write_arrow_table(target, mode, target_bucket, table)
+        return self._flight_result_from_dict({"target_rows":target_rows})
     
     def _resample_time_series(self, data):
         source = data["source"]
@@ -298,21 +328,18 @@ class ShootsServer(flight.FlightServerBase):
         target_bucket = data["target_bucket"]
         mode = data["mode"]
 
-        source_cols = -1
-        target_cols = -1
+        source_rows = -1
+        target_rows = -1
 
-        file_name = self._create_file_path(source, source_bucket)
-        
-        table = pq.read_table(file_name)
-        df_source = table.to_pandas()
-        source_cols = df_source.shape[0]
+        df_source = self._load_dataframe_from_file(source, source_bucket)
+        source_rows = df_source.shape[0]
 
         df_source.set_index(time_col, inplace=True)
         df_source = df_source.resample(rule)
 
         method = getattr(df_source, aggregation_func, None)
         df_target = method()
-        target_cols = df_target.shape[0]
+        target_rows = df_target.shape[0]
  
         # need to do some dancing here to append data because
         # the parquet file stores the timestamp column in milliseconds, but
@@ -335,8 +362,15 @@ class ShootsServer(flight.FlightServerBase):
             else:
                 self._write_arrow_table(target, mode ,target_bucket, table)
 
-        return self._flight_result_from_dict({"source_cols":source_cols,
-                                              "target_cols":target_cols})
+        return self._flight_result_from_dict({"source_rows":source_rows,
+                                              "target_rows":target_rows})
+
+    def _load_dataframe_from_file(self, source, source_bucket):
+        file_name = self._create_file_path(source, source_bucket)
+        
+        table = pq.read_table(file_name)
+        df_source = table.to_pandas()
+        return df_source
 
     def list_actions(self, context):
         """
@@ -354,7 +388,7 @@ class ShootsServer(flight.FlightServerBase):
             ("buckets", "List buckets"),
             ("delete_bucket", "Delete a bucket"),
             ("shutdown", "Shutdown the server"),
-            ("resample", "Conversion and resampling of time series.")
+            ("resample", "Conversion and resampling of time series or with a sql query")
         ]
 
         return [flight.ActionType(action, description) for action, description in actions]

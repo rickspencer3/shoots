@@ -119,18 +119,21 @@ class TestClient(unittest.TestCase):
         self.client.delete("test1")
         self.client.delete("test2")
 
-    # def test_resample_with_sql(self):
-    #     df = self._generate_dataframe(1000000)
-    #     source = "million0"
-    #     self.client.put(name=source, dataframe=df)
+    def test_resample_with_sql(self):
+        df = self._generate_dataframe(1000000)
+        source = "million0"
+        self.client.put(name=source, dataframe=df)
 
-    #     sql = "SELECT * FROM million LIMIT 10"
-    #     res = self.client.resample(source=source,
-    #                                target="ten",
-    #                                sql=sql)
-    #     self.assertEqual(res["target_cols"], 10)
-    #     self.client.delete(source)
-    #     self.client.delete("ten")
+        sql = f"SELECT * FROM {source} LIMIT 10"
+        res = self.client.resample(source=source,
+                                   target="ten",
+                                   sql=sql)
+        self.assertEqual(res["target_rows"], 10)
+
+        df = self.client.get("ten")
+        self.assertEqual(df.shape[0], 10)
+        self.client.delete(source)
+        self.client.delete("ten")
 
     def test_resample_no_buckets(self):
         num_rows = 1000000
@@ -145,7 +148,7 @@ class TestClient(unittest.TestCase):
                              aggregation_func="mean"
                              )
         
-        self.assertEqual(res["target_cols"], 1000)
+        self.assertEqual(res["target_rows"], 1000)
 
         df_thousands = self.client.get("thousand")
         self.assertEqual(df_thousands.shape[0], 1000)    
@@ -165,7 +168,7 @@ class TestClient(unittest.TestCase):
                              time_col="timestamp",
                              aggregation_func="mean")
         
-        self.assertEqual(res["target_cols"], 1000)
+        self.assertEqual(res["target_rows"], 1000)
 
         self.client.resample(source="million", 
                              target="thousand",
@@ -207,7 +210,7 @@ class TestClient(unittest.TestCase):
                              source_bucket=source_bucket,
                              target_bucket=target_bucket)
         
-        self.assertEqual(res["target_cols"], 1000)
+        self.assertEqual(res["target_rows"], 1000)
 
         df_thousands = self.client.get("thousand",bucket=target_bucket)
         self.assertEqual(df_thousands.shape[0], 1000)    
