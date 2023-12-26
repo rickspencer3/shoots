@@ -160,7 +160,7 @@ I intend to work on the following in the coming weeks, in no particular order:
 - [X] add a runtime option for the root bucket directory, use it for testing
 - [X] pip packaging
 - [ ] pattern matching for ```list()```
-- [ ] downsampling via sql on the server
+- [X] downsampling via sql on the server
 - [ ] combining dataframes on the server
 - [ ] compressing and cleaning dataframes on the server
 - [ ] authentication
