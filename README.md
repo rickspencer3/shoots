@@ -111,6 +111,25 @@ You can delete a dataframe using the ```delete()``` method:
 shoots.delete("sensor_data")
 ```
 
+## resampling dataframes
+You can resample (aka "downsample") dataframes on the server by sending either a command for a time series dataframe, or just send SQL for any arbitrary dataframe.
+
+### resample with SQL
+```python
+self.client.resample(source="my_source_dataframe", 
+                    target="my_resampled_dataframe",
+                    sql="SELECT * FROM my_source_dataframe LIMIT 10",
+                    mode=PutMode.APPEND)
+```         
+### resample time series
+```python
+self.client.resample(source="my_source_dataframe", 
+                    target="my_resampled_dataframe",
+                    rule="10s",
+                    time_col="timestamp",
+                    aggregation_func="mean",
+                    mode=PutMode.APPEND)
+```
 ## buckets
 You can organize your dataframes in buckets. This is essentially a directory where your dataframes are stored. 
 
