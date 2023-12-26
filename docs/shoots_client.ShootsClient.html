@@ -241,6 +241,15 @@ Raises:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;FlightServerError<br>
 &nbsp;<br>
 Example:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Resampling&nbsp;with&nbsp;a&nbsp;SQL&nbsp;query:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;```python<br>
+&nbsp;&nbsp;&nbsp;&nbsp;self.<strong>client</strong>.<a href="#shoots_client.ShootsClient-resample">resample</a>(source="my_source_dataframe",&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;target="my_resampled_dataframe",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sql="SELECT&nbsp;*&nbsp;FROM&nbsp;my_source_dataframe&nbsp;LIMIT&nbsp;10",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mode=PutMode.APPEND)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;```<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Resampling&nbsp;time&nbsp;series&nbsp;without&nbsp;a&nbsp;SQL&nbsp;query:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;```python<br>
 &nbsp;&nbsp;&nbsp;&nbsp;self.<strong>client</strong>.<a href="#shoots_client.ShootsClient-resample">resample</a>(source="my_source_dataframe",&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;target="my_resampled_dataframe",<br>

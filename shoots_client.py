@@ -481,6 +481,15 @@ class ShootsClient:
             FlightServerError
         
         Example:
+            Resampling with a SQL query:
+            ```python
+            self.client.resample(source="my_source_dataframe", 
+                                target="my_resampled_dataframe",
+                                sql="SELECT * FROM my_source_dataframe LIMIT 10",
+                                mode=PutMode.APPEND)
+            ```
+
+            Resampling time series without a SQL query:            
             ```python
             self.client.resample(source="my_source_dataframe", 
                                 target="my_resampled_dataframe",
