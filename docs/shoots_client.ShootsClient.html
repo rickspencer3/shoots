@@ -217,7 +217,8 @@ Note:<br>
 &nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;first&nbsp;time&nbsp;a&nbsp;<a href="#shoots_client.ShootsClient-put">put</a>()&nbsp;is&nbsp;called&nbsp;with&nbsp;a&nbsp;bucket&nbsp;name,&nbsp;the&nbsp;bucket&nbsp;will&nbsp;be&nbsp;automatically&nbsp;created.</tt></dd></dl>
 
-<dl><dt><a name="ShootsClient-resample"><strong>resample</strong></a>(self, source: str, target: str, rule: str, time_col: str, aggregation_func: str, mode: shoots_client.PutMode = &lt;PutMode.APPEND: 'append'&gt;, source_bucket: Optional[str] = None, target_bucket: Optional[str] = None)</dt><dd><tt>Convenience&nbsp;method&nbsp;for&nbsp;frequency&nbsp;conversion&nbsp;and&nbsp;resampling&nbsp;of&nbsp;time&nbsp;series&nbsp;on&nbsp;the&nbsp;server.<br>
+<dl><dt><a name="ShootsClient-resample"><strong>resample</strong></a>(self, source: str, target: str, rule: Optional[str] = None, time_col: Optional[str] = None, aggregation_func: Optional[str] = None, sql: Optional[str] = None, mode: Optional[shoots_client.PutMode] = &lt;PutMode.APPEND: 'append'&gt;, source_bucket: Optional[str] = None, target_bucket: Optional[str] = None)</dt><dd><tt>Resamples&nbsp;(a.k.a.&nbsp;downsamples)&nbsp;data&nbsp;on&nbsp;the&nbsp;server.&nbsp;Works&nbsp;with&nbsp;a&nbsp;provided&nbsp;SQL&nbsp;query,&nbsp;or,&nbsp;if&nbsp;the&nbsp;data&nbsp;is&nbsp;time&nbsp;series,<br>
+callers&nbsp;can&nbsp;supply&nbsp;a&nbsp;rule,&nbsp;time&nbsp;column,&nbsp;and&nbsp;aggregation&nbsp;function.<br>
 &nbsp;<br>
 ```<a href="#shoots_client.ShootsClient-resample">resample</a>()```&nbsp;does&nbsp;not&nbsp;require&nbsp;a&nbsp;round&nbsp;trip&nbsp;of&nbsp;the&nbsp;data&nbsp;from&nbsp;the&nbsp;server,&nbsp;but&nbsp;rather&nbsp;performs<br>
 the&nbsp;operation&nbsp;on&nbsp;the&nbsp;server.<br>
@@ -225,13 +226,17 @@ the&nbsp;operation&nbsp;on&nbsp;the&nbsp;server.<br>
 Args:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;source&nbsp;(str):&nbsp;The&nbsp;name&nbsp;of&nbsp;the&nbsp;dataframe&nbsp;to&nbsp;resample<br>
 &nbsp;&nbsp;&nbsp;&nbsp;target&nbsp;(str):&nbsp;&nbsp;The&nbsp;name&nbsp;of&nbsp;the&nbsp;resampled&nbsp;dataframe<br>
-&nbsp;&nbsp;&nbsp;&nbsp;rule&nbsp;(str):&nbsp;String&nbsp;representation&nbsp;of&nbsp;time&nbsp;delta&nbsp;for&nbsp;windowing&nbsp;(example:&nbsp;1s)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;time_col&nbsp;(str):&nbsp;The&nbsp;name&nbsp;of&nbsp;the&nbsp;time&nbsp;stamp&nbsp;column&nbsp;to&nbsp;window&nbsp;on<br>
-&nbsp;&nbsp;&nbsp;&nbsp;aggregation_func&nbsp;(str):&nbsp;The&nbsp;name&nbsp;of&nbsp;the&nbsp;function&nbsp;to&nbsp;aggregate&nbsp;(examples:&nbsp;mean,&nbsp;max,&nbsp;count)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;sql&nbsp;(str):&nbsp;A&nbsp;sql&nbsp;stream&nbsp;for&nbsp;selecting&nbsp;data&nbsp;from&nbsp;the&nbsp;source&nbsp;dataframe<br>
 &nbsp;&nbsp;&nbsp;&nbsp;mode&nbsp;(Optional[PutMode]):&nbsp;Behavior&nbsp;if&nbsp;a&nbsp;target&nbsp;dataframe&nbsp;already&nbsp;exists&nbsp;(defults&nbsp;to&nbsp;APPEND)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;source_bucket&nbsp;(Optional[str]):&nbsp;Bucket&nbsp;containing&nbsp;the&nbsp;source&nbsp;dataframe,&nbsp;if&nbsp;any<br>
 &nbsp;&nbsp;&nbsp;&nbsp;target_bucket&nbsp;(Optional[str]):&nbsp;Bucket&nbsp;for&nbsp;where&nbsp;to&nbsp;store&nbsp;the&nbsp;resampled&nbsp;dataframe,&nbsp;if&nbsp;any<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;following&nbsp;arguments&nbsp;are&nbsp;ignoed&nbsp;if&nbsp;the&nbsp;sql&nbsp;argument&nbsp;is&nbsp;provide,&nbsp;and&nbsp;required&nbsp;if&nbsp;not.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;rule&nbsp;(str):&nbsp;String&nbsp;representation&nbsp;of&nbsp;time&nbsp;delta&nbsp;for&nbsp;windowing&nbsp;(example:&nbsp;1s)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;time_col&nbsp;(str):&nbsp;The&nbsp;name&nbsp;of&nbsp;the&nbsp;time&nbsp;stamp&nbsp;column&nbsp;to&nbsp;window&nbsp;on<br>
+&nbsp;&nbsp;&nbsp;&nbsp;aggregation_func&nbsp;(str):&nbsp;The&nbsp;name&nbsp;of&nbsp;the&nbsp;function&nbsp;to&nbsp;aggregate&nbsp;(examples:&nbsp;mean,&nbsp;max,&nbsp;count)<br>
+&nbsp;<br>
+&nbsp;<br>
 Raises:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;FlightServerError<br>
 &nbsp;<br>

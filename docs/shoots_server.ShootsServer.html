@@ -18,7 +18,7 @@ Attributes:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;bucket_dir&nbsp;(str):&nbsp;Directory&nbsp;path&nbsp;for&nbsp;storing&nbsp;parquet&nbsp;datasets.<br>
 &nbsp;<br>
 Note:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;You&nbsp;most&nbsp;likely&nbsp;don't&nbsp;want&nbsp;to&nbsp;use&nbsp;the&nbsp;server&nbsp;directly,&nbsp;accept&nbsp;for&nbsp;starting&nbsp;it&nbsp;up.&nbsp;It&nbsp;is&nbsp;easiest&nbsp;to&nbsp;interact&nbsp;with&nbsp;the&nbsp;server&nbsp;via&nbsp;ShootsClient.<br>&nbsp;</tt></td></tr>
+&nbsp;&nbsp;&nbsp;&nbsp;You&nbsp;most&nbsp;likely&nbsp;don't&nbsp;want&nbsp;to&nbsp;use&nbsp;the&nbsp;server&nbsp;directly,&nbsp;except&nbsp;for&nbsp;starting&nbsp;it&nbsp;up.&nbsp;It&nbsp;is&nbsp;easiest&nbsp;to&nbsp;interact&nbsp;with&nbsp;the&nbsp;server&nbsp;via&nbsp;ShootsClient.<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>
 <td width="100%"><dl><dt>Method resolution order:</dt>
 <dd><a href="shoots_server.html#ShootsServer">ShootsServer</a></dd>
@@ -82,7 +82,7 @@ Example:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;action&nbsp;=&nbsp;Action("shutdown",&nbsp;bytes)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;client.<a href="#shoots_server.ShootsServer-do_action">do_action</a>(action)<br>
 &nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;resample&nbsp;example<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;resample&nbsp;time&nbsp;series&nbsp;example<br>
 &nbsp;&nbsp;&nbsp;&nbsp;resample_data&nbsp;=&nbsp;{"source":"my_original_dataframe",<br>
 &nbsp;&nbsp;&nbsp;&nbsp;"target":"my_new_dataframe",<br>
 &nbsp;&nbsp;&nbsp;&nbsp;"rule":"1s",<br>
@@ -92,6 +92,16 @@ Example:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;bytes&nbsp;=&nbsp;json.dumps(resample_data).encode()<br>
 &nbsp;&nbsp;&nbsp;&nbsp;action&nbsp;=&nbsp;Action("resample",bytes)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;result&nbsp;=&nbsp;client.<a href="#shoots_server.ShootsServer-do_action">do_action</a>(action)<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;#&nbsp;resample&nbsp;with&nbsp;a&nbsp;sql&nbsp;query&nbsp;example<br>
+&nbsp;&nbsp;&nbsp;&nbsp;resample_data&nbsp;=&nbsp;{"source":"my_original_dataframe",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"target":"my_new_dataframe",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"sql":"SElECT&nbsp;*&nbsp;FROM&nbsp;my_original_dataframe&nbsp;LIMIT&nbsp;10"}<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;bytes&nbsp;=&nbsp;json.dumps(resample_data).encode()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;action&nbsp;=&nbsp;Action("resample",bytes)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;result&nbsp;=&nbsp;client.<a href="#shoots_server.ShootsServer-do_action">do_action</a>(action)<br>
+&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;```</tt></dd></dl>
 
 <dl><dt><a name="ShootsServer-do_get"><strong>do_get</strong></a>(self, context, ticket)</dt><dd><tt>Handles&nbsp;the&nbsp;retrieval&nbsp;of&nbsp;a&nbsp;dataframe&nbsp;based&nbsp;on&nbsp;the&nbsp;given&nbsp;ticket.<br>
