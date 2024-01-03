@@ -8,6 +8,8 @@ import shutil
 import threading
 import argparse
 
+put_modes = ["error", "append", "replace"]
+
 class ShootsServer(flight.FlightServerBase):
     """
     A FlightServer for managing and serving pandas datasets.
@@ -147,8 +149,13 @@ class ShootsServer(flight.FlightServerBase):
         mode = command["mode"]
         bucket = command["bucket"]
 
+        self._raise_if_invalid_put_mode(mode)
         data_table = reader.read_all()
         self._write_arrow_table(name, mode, bucket, data_table) 
+
+    def _raise_if_invalid_put_mode(self, mode):
+        if mode not in put_modes:
+            raise flight.FlightServerError(f"put mode is {mode}, must be one of {put_modes}")
 
     def _write_arrow_table(self, name, mode, bucket, data_table):
         file_path = self._create_file_path(name, bucket)
@@ -309,6 +316,8 @@ class ShootsServer(flight.FlightServerBase):
         target_bucket = data["target_bucket"]
         sql = data["sql"]
         mode = data["mode"]
+
+        self._raise_if_invalid_put_mode(mode)
 
         target_rows = -1
 

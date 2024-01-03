@@ -4,3 +4,6 @@ scratch.py
 buckets
 *.csv
 .vscode/
+certs/
+requirements.txt
+Dockerfile
