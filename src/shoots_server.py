@@ -517,8 +517,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Starts the Shoots Flight Server.')
     parser.add_argument('--port', type=int, default=8081, help='Port number to run the Flight server on.')
     parser.add_argument('--bucket_dir', type=str, default='buckets', help='Path to the bucket directory.')
+    parser.add_argument('--host', type=str, default='localhost', help='Host IP address for where the server will run.')
 
     args = parser.parse_args()
-    location = flight.Location.for_grpc_tcp("localhost", args.port)
+    location = flight.Location.for_grpc_tcp(args.host, args.port)
     server = ShootsServer(location, bucket_dir=args.bucket_dir)
     server.serve()
