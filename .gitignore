@@ -1,9 +1,9 @@
 *.parquet
 __pycache__/
-scratch.py
+src/__pycache__
+src/scratch.py
 buckets
-*.csv
+src/buckets
+src/*.csv
 .vscode/
 certs/
-requirements.txt
-Dockerfile
