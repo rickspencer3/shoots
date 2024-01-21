@@ -160,6 +160,8 @@ class ShootsClient:
         Args:
             host (str): The hostname or IP address of the FlightServer.
             port (int): The port number on which the FlightServer is listening.
+            tls (bool): Whether or not the server to connect to uses TLS.
+            root_cert (string): A root certificate used by the server for tls signing if the server is using self-signed tls.
 
         Raises:
             ValidationError: If the provided host or port values are not valid 
@@ -173,11 +175,6 @@ class ShootsClient:
             ```python
             client = ShootsClient("localhost", 8081)
             ```
-
-        Note:
-            The client uses gRPC for communication with the FlightServer. Ensure
-            that the FlightServer is running and accessible at the specified host
-            and port before creating the ShootsClient instance.
         """
         try:
             config = ClientConfig(host=host, port=port, tls=tls)

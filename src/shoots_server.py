@@ -33,6 +33,8 @@ class ShootsServer(flight.FlightServerBase):
         Args:
             location (pyarrow.flight.Location): The location where the server will run.
             bucket_dir (str): Directory path where the parquet files will be stored.
+            certs (tuple of str): An TLS certificate and key (in that order) for providing TLS support for the server.
+            If no certs are provided, the server will run without TLS.
         """
         self.location = location
         self.bucket_dir = bucket_dir
