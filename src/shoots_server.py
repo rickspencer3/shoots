@@ -507,7 +507,7 @@ class ShootsServer(flight.FlightServerBase):
         shutdown_thread = threading.Thread(target=super(ShootsServer, self).shutdown)
         shutdown_thread.start()
         
-        print("Shutting down ...")
+        print("\nShutting down Shoots server")
         return self._list_to_flight_result(["shutdown command received"])
 
     def serve(self):
@@ -515,7 +515,7 @@ class ShootsServer(flight.FlightServerBase):
         Serve until shutdown is called.
 
         """
-        print(f"Starting Flight server on {self.location.uri.decode()}")
+        print(f"Starting Shoots server on {self.location.uri.decode()}")
         
         super(ShootsServer, self).serve()
 
