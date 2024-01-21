@@ -253,7 +253,7 @@ class TestClient(unittest.TestCase):
     def _generate_dataframe_with_timestamp(self, num_rows):
         date_range_milliseconds = pd.date_range(start='2020-01-01', 
                                                 periods=num_rows, 
-                                                freq='10L')
+                                                freq='10ms')
 
         df = pd.DataFrame({
             'timestamp': date_range_milliseconds,
