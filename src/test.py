@@ -9,6 +9,7 @@ import shutil
 import random
 import string
 import unittest
+import sys
 
 use_tls = False
 
@@ -374,11 +375,27 @@ lZNEMvLlQ/j48ORH46+4lutnDTdTGIiyHroaq2XFHqNay4jfrl7FZwwlJ18jfj+J
 -----END CERTIFICATE-----"""
 
 if __name__ == '__main__':
-    use_tls = False
-    unittest.main(exit=False)
+    no_tls = False
+    tls_only = False
 
-    import ssl
-    print(ssl.OPENSSL_VERSION)
+    if "--no-tls" in sys.argv:
+        no_tls = True
+        sys.argv.remove("--no-tls")
+    
+    if "--tls-only" in sys.argv:
+        tls_only = True
+        sys.argv.remove("--tls-only")
+    
+    if no_tls:
+        use_tls = False
+        unittest.main()
 
-    use_tls = True
-    unittest.main()
+    elif tls_only:
+        use_tls = True
+        unittest.main()
+    else:
+        use_tls = False
+        unittest.main(exit=False)
+
+        use_tls = True
+        unittest.main()
