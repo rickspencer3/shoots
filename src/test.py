@@ -49,9 +49,22 @@ class TestClient(unittest.TestCase):
         shutil.rmtree(cls.bucket_dir)  # Clean up the directory
 
     # def test_list_actions(self):
-    #     client = FlightClient(self.location)
+    #         kwargs = {}
+    #         if not use_tls:
+    #             url_scheme = "grpc://"
+    #         else:
+    #             url_scheme = "grpc+tls://"
+    #             kwargs["tls_root_certs"] = root_cert
+    #         url = f"{url_scheme}localhost:8082"
+    #         self.client = FlightClient(url, **kwargs)
+
+    #         client = FlightClient(self.location, tls_options=client_options)
+    #     else:
+    #         client = FlightClient(self.location)
+    
     #     actions = client.list_actions()
     #     self.assertGreaterEqual(len(actions), 3)
+
     
     def test_write_replace_mode(self):
         self.client.put("test1",self.dataframe0,mode=PutMode.REPLACE)    
