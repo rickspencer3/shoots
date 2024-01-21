@@ -22,7 +22,11 @@ class ShootsServer(flight.FlightServerBase):
         You most likely don't want to use the server directly, except for starting it up. It is easiest to interact with the server via ShootsClient.
     """
 
-    def __init__(self, location, bucket_dir, *args, **kwargs):
+    def __init__(self, 
+                 location,
+                 bucket_dir,
+                 certs = None,
+                 *args, **kwargs):
         """
         Initializes the ShootsServer.
 
@@ -32,8 +36,15 @@ class ShootsServer(flight.FlightServerBase):
         """
         self.location = location
         self.bucket_dir = bucket_dir
-        super(ShootsServer, self).__init__(location, *args, **kwargs)
-
+        if certs == None:
+            super(ShootsServer, self).__init__(location, *args, **kwargs)
+        else:
+            super(ShootsServer, self).__init__(location,
+                                    None, # auth_handler
+                                    [certs],
+                                    False, # verify_client
+                                    *args, **kwargs)
+            
     def do_get(self, context, ticket):
         """
         Handles the retrieval of a dataframe based on the given ticket.
@@ -513,13 +524,37 @@ class ShootsServer(flight.FlightServerBase):
         
         super(ShootsServer, self).serve()
 
+def _read_cert_files(cert_file, key_file):
+    with open(cert_file, 'r') as cert_file_content:
+        cert_data = cert_file_content.read()
+    with open(key_file, 'r') as key_file_content:
+        key_data = key_file_content.read()
+    return(cert_data, key_data)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Starts the Shoots Flight Server.')
     parser.add_argument('--port', type=int, default=8081, help='Port number to run the Flight server on.')
     parser.add_argument('--bucket_dir', type=str, default='buckets', help='Path to the bucket directory.')
     parser.add_argument('--host', type=str, default='localhost', help='Host IP address for where the server will run.')
+    parser.add_argument('--cert_file', type=str, default=None, help='Path to file for cert file for TLS')
+    parser.add_argument('--key_file', type=str, default=None, help='Path to file for key file for TLS')
 
     args = parser.parse_args()
-    location = flight.Location.for_grpc_tcp(args.host, args.port)
-    server = ShootsServer(location, bucket_dir=args.bucket_dir)
+
+    if args.cert_file is not None and args.key_file is not None:
+        location = flight.Location.for_grpc_tls(args.host, args.port)
+        certs = _read_cert_files(args.cert_file, args.key_file)
+
+        server = ShootsServer(location,
+                              bucket_dir=args.bucket_dir,
+                              certs=certs)
+    # Check if both cert_file and key_file are None
+    elif args.cert_file is None and args.key_file is None:
+        location = flight.Location.for_grpc_tcp(args.host, args.port)
+        server = ShootsServer(location, bucket_dir=args.bucket_dir)
+    # If one is None and the other is not, raise an error
+    else:
+        raise ValueError("Both cert_file and key_file must be provided, or neither should be.")
+
     server.serve()

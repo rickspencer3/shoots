@@ -38,6 +38,7 @@ class ClientConfig(BaseSettings):
 
     host: str
     port: int
+    tls: bool
 
 class DeleteRequest(BaseModel):
     """
@@ -144,7 +145,11 @@ class ShootsClient:
         _flight_result_to_list: Internal method to convert Flight result to list.
         _flight_result_to_string: Internal method to convert Flight result to string.
     """
-    def __init__(self, host: str, port: int):
+    def __init__(self, 
+                 host: str, 
+                 port: int, 
+                 tls: Optional[bool] = False,
+                 root_cert: Optional[str] = None):
         """
         Initializes the ShootsClient with the specified host and port.
 
@@ -175,8 +180,18 @@ class ShootsClient:
             and port before creating the ShootsClient instance.
         """
         try:
-            config = ClientConfig(host=host, port=port)
-            self.client = FlightClient(f"grpc://{config.host}:{config.port}")
+            config = ClientConfig(host=host, port=port, tls=tls)
+            kwargs = {}
+            if root_cert is not None:
+                kwargs["tls_root_certs"] = root_cert
+            url_scheme = ""
+            if not tls:
+                url_scheme = "grpc://"
+            else:
+                url_scheme = "grpc+tls://"
+
+            url = f"{url_scheme}{config.host}:{config.port}"
+            self.client = FlightClient(url, **kwargs)
         except ValidationError as e:
             print(f"Configuration error: {e}")
             raise
