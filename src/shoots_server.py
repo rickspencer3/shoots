@@ -22,18 +22,31 @@ class ShootsServer(flight.FlightServerBase):
         You most likely don't want to use the server directly, except for starting it up. It is easiest to interact with the server via ShootsClient.
     """
 
-    def __init__(self, location, bucket_dir, *args, **kwargs):
+    def __init__(self, 
+                 location,
+                 bucket_dir,
+                 certs = None,
+                 *args, **kwargs):
         """
         Initializes the ShootsServer.
 
         Args:
             location (pyarrow.flight.Location): The location where the server will run.
             bucket_dir (str): Directory path where the parquet files will be stored.
+            certs (tuple of str): An TLS certificate and key (in that order) for providing TLS support for the server.
+            If no certs are provided, the server will run without TLS.
         """
         self.location = location
         self.bucket_dir = bucket_dir
-        super(ShootsServer, self).__init__(location, *args, **kwargs)
-
+        if certs == None:
+            super(ShootsServer, self).__init__(location, *args, **kwargs)
+        else:
+            super(ShootsServer, self).__init__(location,
+                                    None, # auth_handler
+                                    [certs],
+                                    False, # verify_client
+                                    *args, **kwargs)
+            
     def do_get(self, context, ticket):
         """
         Handles the retrieval of a dataframe based on the given ticket.
@@ -350,9 +363,6 @@ class ShootsServer(flight.FlightServerBase):
         df_target = method()
         target_rows = df_target.shape[0]
  
-        # need to do some dancing here to append data because
-        # the parquet file stores the timestamp column in milliseconds, but
-        # pandas only understands nanoseconds
         table = pa.Table.from_pandas(df_target)
         if mode != "append":    
             self._write_arrow_table(target, mode ,target_bucket, table)
@@ -360,11 +370,7 @@ class ShootsServer(flight.FlightServerBase):
             file_path = self._create_file_path(target, target_bucket)
             if os.path.exists(file_path):
                 existing_table = pq.read_table(file_path)
-                converted_timestamp_col = table.column(time_col).cast(pa.timestamp('us'))
-
-                table = table.set_column(table.schema.get_field_index(time_col),
-                                        pa.field(time_col, pa.timestamp('us')),
-                                        converted_timestamp_col)
+              
                 data_table = pa.concat_tables([existing_table, table])
 
                 pq.write_table(data_table, file_path)
@@ -501,7 +507,7 @@ class ShootsServer(flight.FlightServerBase):
         shutdown_thread = threading.Thread(target=super(ShootsServer, self).shutdown)
         shutdown_thread.start()
         
-        print("Shutting down ...")
+        print("\nShutting down Shoots server")
         return self._list_to_flight_result(["shutdown command received"])
 
     def serve(self):
@@ -509,17 +515,41 @@ class ShootsServer(flight.FlightServerBase):
         Serve until shutdown is called.
 
         """
-        print(f"Starting Flight server on {self.location.uri.decode()}")
+        print(f"Starting Shoots server on {self.location.uri.decode()}")
         
         super(ShootsServer, self).serve()
+
+def _read_cert_files(cert_file, key_file):
+    with open(cert_file, 'r') as cert_file_content:
+        cert_data = cert_file_content.read()
+    with open(key_file, 'r') as key_file_content:
+        key_data = key_file_content.read()
+    return(cert_data, key_data)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Starts the Shoots Flight Server.')
     parser.add_argument('--port', type=int, default=8081, help='Port number to run the Flight server on.')
     parser.add_argument('--bucket_dir', type=str, default='buckets', help='Path to the bucket directory.')
     parser.add_argument('--host', type=str, default='localhost', help='Host IP address for where the server will run.')
+    parser.add_argument('--cert_file', type=str, default=None, help='Path to file for cert file for TLS')
+    parser.add_argument('--key_file', type=str, default=None, help='Path to file for key file for TLS')
 
     args = parser.parse_args()
-    location = flight.Location.for_grpc_tcp(args.host, args.port)
-    server = ShootsServer(location, bucket_dir=args.bucket_dir)
+
+    if args.cert_file is not None and args.key_file is not None:
+        location = flight.Location.for_grpc_tls(args.host, args.port)
+        certs = _read_cert_files(args.cert_file, args.key_file)
+
+        server = ShootsServer(location,
+                              bucket_dir=args.bucket_dir,
+                              certs=certs)
+    # Check if both cert_file and key_file are None
+    elif args.cert_file is None and args.key_file is None:
+        location = flight.Location.for_grpc_tcp(args.host, args.port)
+        server = ShootsServer(location, bucket_dir=args.bucket_dir)
+    # If one is None and the other is not, raise an error
+    else:
+        raise ValueError("Both cert_file and key_file must be provided, or neither should be.")
+
     server.serve()
