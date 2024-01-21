@@ -38,10 +38,11 @@ class TestClient(unittest.TestCase):
         cls.server_thread = threading.Thread(target=cls.server.serve)
         cls.server_thread.start()
 
-        cls.shoot_client = ShootsClient("localhost", 
+        cls.shoots_client = ShootsClient("localhost", 
                                   cls.port, 
                                   use_tls,
                                   root_cert)
+        
         url = f"{url_scheme}localhost:{cls.port}"
         cls.flight_client = FlightClient(url,**kwargs)
         data = {"col1":[0],"col2":["zero"]}
@@ -62,105 +63,105 @@ class TestClient(unittest.TestCase):
 
     
     def test_write_replace_mode(self):
-        self.shoot_client.put("test1",self.dataframe0,mode=PutMode.REPLACE)    
-        self.shoot_client.put("test1",self.dataframe1,mode=PutMode.REPLACE)
-        res = self.shoot_client.get("test1")
+        self.shoots_client.put("test1",self.dataframe0,mode=PutMode.REPLACE)    
+        self.shoots_client.put("test1",self.dataframe1,mode=PutMode.REPLACE)
+        res = self.shoots_client.get("test1")
         self.assertEqual(res.shape[0],1)
         self.assertEqual(res.iloc(0)[0].col1, 1)
         
-        self.shoot_client.delete("test1")
+        self.shoots_client.delete("test1")
 
     def test_delete_file_not_found(self):
         with self.assertRaises(FlightServerError):
-            self.shoot_client.delete("abcdefghijklmnopqrstuvwxyz")
+            self.shoots_client.delete("abcdefghijklmnopqrstuvwxyz")
         
     def test_write_error(self):
-        self.shoot_client.put("test1",self.dataframe1,mode=PutMode.ERROR)
+        self.shoots_client.put("test1",self.dataframe1,mode=PutMode.ERROR)
         with self.assertRaises(FlightServerError):
-            self.shoot_client.put("test1",self.dataframe1,mode=PutMode.ERROR)
-        self.shoot_client.delete("test1")
+            self.shoots_client.put("test1",self.dataframe1,mode=PutMode.ERROR)
+        self.shoots_client.delete("test1")
 
     def test_write_append(self):
-        self.shoot_client.put("test1",self.dataframe0,mode=PutMode.ERROR)
-        self.shoot_client.put("test1",self.dataframe1,mode=PutMode.APPEND)
-        res = self.shoot_client.get("test1")
+        self.shoots_client.put("test1",self.dataframe0,mode=PutMode.ERROR)
+        self.shoots_client.put("test1",self.dataframe1,mode=PutMode.APPEND)
+        res = self.shoots_client.get("test1")
         self.assertEqual(res.shape[0],2)
 
-        self.shoot_client.delete("test1")
+        self.shoots_client.delete("test1")
 
     def test_read_with_select_star(self):
-        self.shoot_client.put("test1",self.dataframe0,mode=PutMode.ERROR)
-        self.shoot_client.put("test1",self.dataframe1,mode=PutMode.APPEND)  
+        self.shoots_client.put("test1",self.dataframe0,mode=PutMode.ERROR)
+        self.shoots_client.put("test1",self.dataframe1,mode=PutMode.APPEND)  
         sql = "SELECT * FROM test1"
-        res = self.shoot_client.get("test1", sql)
+        res = self.shoots_client.get("test1", sql)
         self.assertEqual(res.shape[0],2)
-        self.shoot_client.delete("test1")
+        self.shoots_client.delete("test1")
 
     def test_read_with_select(self):
-        self.shoot_client.put("test1",self.dataframe0,mode=PutMode.ERROR)
-        self.shoot_client.put("test1",self.dataframe1,mode=PutMode.APPEND)  
+        self.shoots_client.put("test1",self.dataframe0,mode=PutMode.ERROR)
+        self.shoots_client.put("test1",self.dataframe1,mode=PutMode.APPEND)  
         sql = "SELECT col2 FROM test1 where col1 = 1"
-        res = self.shoot_client.get("test1", sql)
+        res = self.shoots_client.get("test1", sql)
         self.assertEqual(res.shape[0],1)
-        self.shoot_client.delete("test1")
+        self.shoots_client.delete("test1")
     
     def test_read_write_to_bucket(self):
         bucket = "test_bucket"
-        self.shoot_client.put("test1",self.dataframe0,mode=PutMode.REPLACE,bucket=bucket)
-        res = self.shoot_client.get("test1",bucket=bucket)
+        self.shoots_client.put("test1",self.dataframe0,mode=PutMode.REPLACE,bucket=bucket)
+        res = self.shoots_client.get("test1",bucket=bucket)
         self.assertEqual(res.shape[0],1)
-        self.shoot_client.delete("test1", bucket=bucket)
+        self.shoots_client.delete("test1", bucket=bucket)
 
     def test_list_and_delete_bucket(self):
         bucket = "testing_bucket"
-        self.shoot_client.put("test1",self.dataframe0,mode=PutMode.REPLACE,bucket=bucket)
-        buckets = self.shoot_client.buckets()
+        self.shoots_client.put("test1",self.dataframe0,mode=PutMode.REPLACE,bucket=bucket)
+        buckets = self.shoots_client.buckets()
         self.assertIn(bucket, buckets)
         with self.assertRaises(FlightServerError):
-            self.shoot_client.delete_bucket("test1", mode=BucketDeleteMode.ERROR)
+            self.shoots_client.delete_bucket("test1", mode=BucketDeleteMode.ERROR)
 
-        self.shoot_client.delete_bucket(bucket, mode=BucketDeleteMode.DELETE_CONTENTS)
-        buckets = self.shoot_client.buckets()
+        self.shoots_client.delete_bucket(bucket, mode=BucketDeleteMode.DELETE_CONTENTS)
+        buckets = self.shoots_client.buckets()
         self.assertNotIn(bucket, buckets)
 
     def test_list(self):
-        self.shoot_client.put("test1",self.dataframe0,mode=PutMode.REPLACE)
-        self.shoot_client.put("test2",self.dataframe0,mode=PutMode.REPLACE)
+        self.shoots_client.put("test1",self.dataframe0,mode=PutMode.REPLACE)
+        self.shoots_client.put("test2",self.dataframe0,mode=PutMode.REPLACE)
         
-        files_count = len(self.shoot_client.list())
+        files_count = len(self.shoots_client.list())
         
         try:
             self.assertEqual(files_count, 2)
         except:
-            self.shoot_client.delete("test1")
-            self.shoot_client.delete("test2")
+            self.shoots_client.delete("test1")
+            self.shoots_client.delete("test2")
             raise
-        self.shoot_client.delete("test1")
-        self.shoot_client.delete("test2")
+        self.shoots_client.delete("test1")
+        self.shoots_client.delete("test2")
 
     def test_resample_with_sql(self):
         df = self._generate_dataframe(1000000)
         source = "million0"
-        self.shoot_client.put(name=source, dataframe=df)
+        self.shoots_client.put(name=source, dataframe=df)
 
         sql = f"SELECT * FROM {source} LIMIT 10"
-        res = self.shoot_client.resample(source=source,
+        res = self.shoots_client.resample(source=source,
                                    target="ten",
                                    sql=sql)
         self.assertEqual(res["target_rows"], 10)
 
-        df = self.shoot_client.get("ten")
+        df = self.shoots_client.get("ten")
         self.assertEqual(df.shape[0], 10)
-        self.shoot_client.delete(source)
-        self.shoot_client.delete("ten")
+        self.shoots_client.delete(source)
+        self.shoots_client.delete("ten")
 
     def test_resample_no_buckets(self):
         num_rows = 1000000
         df = self._generate_dataframe_with_timestamp(num_rows)
 
-        self.shoot_client.put(name="million", dataframe=df)
+        self.shoots_client.put(name="million", dataframe=df)
 
-        res = self.shoot_client.resample(source="million", 
+        res = self.shoots_client.resample(source="million", 
                              target="thousand",
                              rule="10s",
                              time_col="timestamp",
@@ -169,19 +170,19 @@ class TestClient(unittest.TestCase):
         
         self.assertEqual(res["target_rows"], 1000)
 
-        df_thousands = self.shoot_client.get("thousand")
+        df_thousands = self.shoots_client.get("thousand")
         self.assertEqual(df_thousands.shape[0], 1000)    
 
-        self.shoot_client.delete("million")
-        self.shoot_client.delete("thousand")
+        self.shoots_client.delete("million")
+        self.shoots_client.delete("thousand")
 
     def test_resample_append(self):
         num_rows = 1000000
         df = self._generate_dataframe_with_timestamp(num_rows)
 
-        self.shoot_client.put(name="million", dataframe=df)
+        self.shoots_client.put(name="million", dataframe=df)
 
-        res = self.shoot_client.resample(source="million", 
+        res = self.shoots_client.resample(source="million", 
                              target="thousand",
                              rule="10s",
                              time_col="timestamp",
@@ -189,29 +190,29 @@ class TestClient(unittest.TestCase):
         
         self.assertEqual(res["target_rows"], 1000)
 
-        self.shoot_client.resample(source="million", 
+        self.shoots_client.resample(source="million", 
                              target="thousand",
                              rule="10s",
                              time_col="timestamp",
                              aggregation_func="mean",
                              mode=PutMode.REPLACE)
 
-        df_thousands = self.shoot_client.get("thousand")
+        df_thousands = self.shoots_client.get("thousand")
         self.assertEqual(df_thousands.shape[0], 1000)    
 
 
-        self.shoot_client.resample(source="million", 
+        self.shoots_client.resample(source="million", 
                              target="thousand",
                              rule="10s",
                              time_col="timestamp",
                              aggregation_func="mean",
                              mode=PutMode.APPEND)
 
-        df_thousands = self.shoot_client.get("thousand")
+        df_thousands = self.shoots_client.get("thousand")
         self.assertEqual(df_thousands.shape[0], 2000) 
 
-        self.shoot_client.delete("million")
-        self.shoot_client.delete("thousand")
+        self.shoots_client.delete("million")
+        self.shoots_client.delete("thousand")
 
     def test_resample_with_buckets(self):
         num_rows = 1000000
@@ -219,9 +220,9 @@ class TestClient(unittest.TestCase):
 
         source_bucket="million_bucket"
         target_bucket="thousand_bucket"
-        self.shoot_client.put(name="million", dataframe=df, bucket=source_bucket)
+        self.shoots_client.put(name="million", dataframe=df, bucket=source_bucket)
 
-        res = self.shoot_client.resample(source="million", 
+        res = self.shoots_client.resample(source="million", 
                              target="thousand",
                              rule="10s",
                              time_col="timestamp",
@@ -231,11 +232,11 @@ class TestClient(unittest.TestCase):
         
         self.assertEqual(res["target_rows"], 1000)
 
-        df_thousands = self.shoot_client.get("thousand",bucket=target_bucket)
+        df_thousands = self.shoots_client.get("thousand",bucket=target_bucket)
         self.assertEqual(df_thousands.shape[0], 1000)    
 
-        self.shoot_client.delete("million", bucket=source_bucket)
-        self.shoot_client.delete("thousand", bucket=target_bucket)
+        self.shoots_client.delete("million", bucket=source_bucket)
+        self.shoots_client.delete("thousand", bucket=target_bucket)
 
     def _generate_dataframe(self, num_rows):
         integers = np.random.randint(0, 100, size=num_rows)  # Random integers between 0 and 99
@@ -263,16 +264,16 @@ class TestClient(unittest.TestCase):
         return df
 
     def test_list_with_bucket(self):
-        self.shoot_client.put("test1",
+        self.shoots_client.put("test1",
                         self.dataframe0,
                         mode=PutMode.REPLACE,
                         bucket="listybucket")
-        self.shoot_client.put("test2",
+        self.shoots_client.put("test2",
                         self.dataframe0,
                         mode=PutMode.REPLACE,
                         bucket="listybucket")
 
-        datasets = self.shoot_client.list(bucket="listybucket")
+        datasets = self.shoots_client.list(bucket="listybucket")
         files_count = len(datasets)
         names = []
         for dataset in datasets:
@@ -282,15 +283,15 @@ class TestClient(unittest.TestCase):
             self.assertIn("test1", names)
             self.assertIn("test2", names)
         except:
-            self.shoot_client.delete("test1",
+            self.shoots_client.delete("test1",
                         bucket="listybucket")
-            self.shoot_client.delete("test2",
+            self.shoots_client.delete("test2",
                         bucket="listybucket")
             raise
         
-        self.shoot_client.delete("test1",
+        self.shoots_client.delete("test1",
                         bucket="listybucket")
-        self.shoot_client.delete("test2",
+        self.shoots_client.delete("test2",
                         bucket="listybucket")
 
 server_cert = """-----BEGIN CERTIFICATE-----

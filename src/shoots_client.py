@@ -153,6 +153,11 @@ class ShootsClient:
         """
         Initializes the ShootsClient with the specified host and port.
 
+        If the ShootsServer is configured to use TLS, set tls to True.
+
+        If the ShootsServer SSL certificate is self signed, use the root_cert 
+        parameter, passing in the servers root certificate as a string.
+
         This method creates a new instance of the ShootsClient, setting up the
         connection to the FlightServer. It configures the client with the provided
         host and port parameters.
@@ -170,10 +175,20 @@ class ShootsClient:
         
         Example:
             To create a client instance that connects to a FlightServer running
-            on localhost at port 8081, use the following:
+            on localhost at port 8081, without TLS use the following:
 
             ```python
             client = ShootsClient("localhost", 8081)
+            ```
+
+            If the server is using TLS, and is self-signed
+            ```
+            with open('root.pem') as root_file:
+                root_cert = root_file.read()
+            client = ShootsClient(address,
+                                8081,
+                                True,
+                                root_cert)
             ```
         """
         try:
