@@ -324,13 +324,13 @@ class ShootsServer(flight.FlightServerBase):
             else:
                 return self._resample_time_series(action_info)
     
-    def _resample_with_sql(self, data):
-        source = data["source"]
-        target = data["target"]
-        source_bucket = data["source_bucket"]
-        target_bucket = data["target_bucket"]
-        sql = data["sql"]
-        mode = data["mode"]
+    def _resample_with_sql(self, resample_info):
+        source = resample_info["source"]
+        target = resample_info["target"]
+        source_bucket = resample_info["source_bucket"]
+        target_bucket = resample_info["target_bucket"]
+        sql = resample_info["sql"]
+        mode = resample_info["mode"]
 
         self._raise_if_invalid_put_mode(mode)
 
@@ -342,15 +342,15 @@ class ShootsServer(flight.FlightServerBase):
         self._write_arrow_table(target, mode, target_bucket, table)
         return self._flight_result_from_dict({"target_rows":target_rows})
     
-    def _resample_time_series(self, data):
-        source = data["source"]
-        target = data["target"]
-        rule = data["rule"]
-        time_col = data["time_col"]
-        aggregation_func = data["aggregation_func"]
-        source_bucket = data["source_bucket"]
-        target_bucket = data["target_bucket"]
-        mode = data["mode"]
+    def _resample_time_series(self, resample_info):
+        source = resample_info["source"]
+        target = resample_info["target"]
+        rule = resample_info["rule"]
+        time_col = resample_info["time_col"]
+        aggregation_func = resample_info["aggregation_func"]
+        source_bucket = resample_info["source_bucket"]
+        target_bucket = resample_info["target_bucket"]
+        mode = resample_info["mode"]
 
         source_rows = -1
         target_rows = -1
@@ -424,9 +424,9 @@ class ShootsServer(flight.FlightServerBase):
         
         return file_path
         
-    def _delete_bucket(self, data):
-        bucket = data["name"]
-        mode = data["mode"]
+    def _delete_bucket(self, delete_info):
+        bucket = delete_info["name"]
+        mode = delete_info["mode"]
         bucket_path = os.path.join(self.bucket_dir, bucket)
         if not os.path.isdir(bucket_path):
             raise flight.FlightServerError(f"No such bucket: {bucket}",
@@ -441,16 +441,16 @@ class ShootsServer(flight.FlightServerBase):
                 shutil.rmtree(bucket_path)
         else: 
             os.rmdir(bucket_path) 
-        result_data = {"message":f"bucket {bucket} deleted"}
-        return self._flight_result_from_dict(result_data)
+        result_info = {"message":f"bucket {bucket} deleted"}
+        return self._flight_result_from_dict(result_info)
 
     def _buckets(self):
         entries = os.listdir(self.bucket_dir)
         buckets = [entry for entry in entries if os.path.isdir(os.path.join(self.bucket_dir, entry))]
         return self._list_to_flight_result(buckets)
 
-    def _list_to_flight_result(self, buckets):
-        bytes = json.dumps(buckets).encode()
+    def _list_to_flight_result(self, strings):
+        bytes = json.dumps(strings).encode()
         result = flight.Result(bytes)
         return [result]
 
@@ -466,9 +466,9 @@ class ShootsServer(flight.FlightServerBase):
         
         return parquet_files
     
-    def _delete(self, data):
-        name = data["name"]
-        bucket = data["bucket"]
+    def _delete(self, delete_info):
+        name = delete_info["name"]
+        bucket = delete_info["bucket"]
         file_path = self._create_file_path(name, bucket)
 
         try:
@@ -482,11 +482,11 @@ class ShootsServer(flight.FlightServerBase):
             raise flight.FlightServerError(f"Error encountered deleting {name}",
                                            extra_info=str(e))
         
-        result_data = {"success":True, "message":f"deleted {name}"}
-        return self._flight_result_from_dict(result_data)
+        result_info = {"success":True, "message":f"deleted {name}"}
+        return self._flight_result_from_dict(result_info)
 
-    def _flight_result_from_dict(self, result_data):
-        bytes = json.dumps(result_data).encode()
+    def _flight_result_from_dict(self, result_info):
+        bytes = json.dumps(result_info).encode()
         result = flight.Result(bytes)
         return [result]
 
