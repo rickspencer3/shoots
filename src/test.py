@@ -3,7 +3,7 @@ from shoots_server import ShootsServer
 from shoots_client import PutMode, BucketDeleteMode
 import pandas as pd
 import numpy as np
-from pyarrow.flight import FlightServerError, Location, FlightClient
+from pyarrow.flight import FlightServerError, Location, FlightClient, FlightUnavailableError
 import threading
 import shutil
 import random
@@ -61,7 +61,12 @@ class TestClient(unittest.TestCase):
         actions = self.flight_client.list_actions()
         self.assertGreaterEqual(len(actions), 3)
 
-    
+    def test_fail_if_no_tls(self):
+        if use_tls:
+            with self.assertRaises(FlightUnavailableError):
+                client_no_tls = ShootsClient("localhost", self.port, False)
+                client_no_tls.put("should_error", self.dataframe0)
+
     def test_write_replace_mode(self):
         self.shoots_client.put("test1",self.dataframe0,mode=PutMode.REPLACE)    
         self.shoots_client.put("test1",self.dataframe1,mode=PutMode.REPLACE)
