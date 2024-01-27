@@ -31,8 +31,13 @@ python3 shoots_server.py
 ### start up options
 ShootsServer supports the follow CLI arguments:
  - ```--port```: Port number to run the Flight server on. Defaults to 8081.
- - ```--bucket_dir```: Path to the bucket directory. Defaults to ./buckets
+ - ```--bucket_dir```: Path to the bucket directory. Defaults to ./buckets.
  - ```--host```: Host IP address for where the server will run. Defaults to localhost.
+
+For example, to run on localhost, but for a different port and bucket directory:
+```bash
+python3 shoots_server.py --port=8082 --bucket_dir="/foo/bar"
+```
 
 To enable TLS on the server, provide an SSL certificate and key.
  - ```--cert_file```: Path to file for cert file for TLS. Defaults to None. 
@@ -44,10 +49,6 @@ These options can also be set via environment variables.
  - ```SHOOTS_HOST```
  - ```SHOOTS_CERT_FILE```
  - ```SHOOTS_KEY_FILE```
-
-```bash
-python3 shoots_server.py --port=8082 --bucket_dir="/foo/bar"
-```
 
 ### python
 You can also start up the server in Python. It is best to start it on a thread or you won't be able to cleanly shut it down.
@@ -71,7 +72,7 @@ shoots = ShootsClient("localhost", 8081)
 shoots.shutdown()
 ```
 ### from python code
-The Shoots shutdown function handles the threading, so you can simply call it:
+The Shoots shutdown function handles the threading, so you can simply call it.
 
 ```python
 server.shutdown()
