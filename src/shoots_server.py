@@ -38,6 +38,7 @@ class ShootsServer(flight.FlightServerBase):
         """
         self.location = location
         self.bucket_dir = bucket_dir
+        os.makedirs(self.bucket_dir, exist_ok=True)
         if certs == None:
             super(ShootsServer, self).__init__(location, *args, **kwargs)
         else:
@@ -419,7 +420,7 @@ class ShootsServer(flight.FlightServerBase):
 
     def _create_file_path(self, name, bucket=None):
         bucket_path = None
-        if bucket: 
+        if bucket:
             bucket_path = os.path.join(self.bucket_dir, bucket)
         else:
             bucket_path = self.bucket_dir
