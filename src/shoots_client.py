@@ -557,6 +557,20 @@ class ShootsClient:
         result = self.client.do_action(action)
         return json.loads(self._flight_result_to_string(result))
       
+    def ping(self):
+        """
+        Sends a 'ping' to th server.
+
+        Useful for testing if the server is alive and the connection is working.
+
+        Returns:
+            str: only "pong" is returned, otherwise the function returns an error
+        """
+
+        action = Action("ping", b'')
+        result = self.client.do_action(action)
+        return self._flight_result_to_string(result)
+    
     def _flight_result_to_list(self, result):
         list_string = None
         for r in result:
