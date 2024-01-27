@@ -28,9 +28,22 @@ or
 python3 shoots_server.py
 ```
 
-There are 2 startup options currently:
- - ```bucket_dir```: Allows you to specify a directory where the dataframes get stored. Defaults to "buckets".
- - ```port```: The port on which to run the server. Defaults to 8081.
+### start up options
+ShootsServer supports the follow CLI arguments:
+ - ```--port```: Port number to run the Flight server on. Defaults to 8081.
+ - ```--bucket_dir```: Path to the bucket directory. Defaults to ./buckets
+ - ```--host```: Host IP address for where the server will run. Defaults to localhost.
+
+To enable TLS on the server, provide an SSL certificate and key.
+ - ```--cert_file```: Path to file for cert file for TLS. Defaults to None. 
+ - ```--key_file```: Path to file for key file for TLS. Defaults to None.
+
+These options can also be set via environment variables.
+ - ```SHOOTS_PORT```
+ - ```SHOOTS_BUCKET_DIR```
+ - ```SHOOTS_HOST```
+ - ```SHOOTS_CERT_FILE```
+ - ```SHOOTS_KEY_FILE```
 
 ```bash
 python3 shoots_server.py --port=8082 --bucket_dir="/foo/bar"
@@ -63,7 +76,28 @@ You can also call it from a thread in Python. Assuming you ran the server on thr
 ```python
 server.shutdown()
 ```
-   
+
+## creating a client object
+ShootsClient requires a host name and port number:
+```python
+shoots = ShootsClient("localhost", 8081)
+```
+
+You can enable tls by setting use TLS to True.
+```python
+shoots = ShootsClient("localhost", 8081, True)
+```
+
+If the server is using a self signed certicate for TLS, you need to provide the root certificate to the client. You do this by passing in the certificate a string.
+```python
+
+root_cert = ""
+with open(path_to_root_cert) as root_cert_file:
+    root_cert = root_cert_file.read()
+
+shoots = ShootsClient("localhost", 8081, True, root_cert)
+```
+
 ## storing a dataframe
 Use the client library to create an instance of the client, and ```put()``` a dataframe. Assuming you are running locally:
 ```python
@@ -181,6 +215,6 @@ I intend to work on the following in the coming weeks, in no particular order:
 - [ ] pattern matching for ```list()```
 - [X] downsampling via sql on the server
 - [ ] combining dataframes on the server
-- [ ] compressing and cleaning dataframes on the server
+- [X] compressing and cleaning dataframes on the server
 - [ ] authentication
 - [ ] UI with SQL tree view browser and editor
