@@ -91,12 +91,12 @@ class ShootsServer(flight.FlightServerBase):
             ```
         """
         try:
-            ticket_obj = json.loads(ticket.ticket.decode())
-            name = ticket_obj["name"]
-            bucket = ticket_obj["bucket"]
+            ticket_info = json.loads(ticket.ticket.decode())
+            name = ticket_info["name"]
+            bucket = ticket_info["bucket"]
             file_path = self._create_file_path(name, bucket)
-            if "sql" in ticket_obj:
-                sql_query = ticket_obj["sql"]
+            if "sql" in ticket_info:
+                sql_query = ticket_info["sql"]
                 table = self._get_arrow_table_from_sql(name, file_path, sql_query)
                 
                 return flight.RecordBatchStream(table)
@@ -155,12 +155,12 @@ class ShootsServer(flight.FlightServerBase):
             writer.close()
             ```
         """
-        command = json.loads(descriptor.command.decode())
+        command_info = json.loads(descriptor.command.decode())
 
         # Extract name and mode from the command
-        name = command["name"]
-        mode = command["mode"]
-        bucket = command["bucket"]
+        name = command_info["name"]
+        mode = command_info["mode"]
+        bucket = command_info["bucket"]
 
         self._raise_if_invalid_put_mode(mode)
         data_table = reader.read_all()
@@ -215,9 +215,9 @@ class ShootsServer(flight.FlightServerBase):
             The regex criteria is not yet implemented on the server.
         """
 
-        data_obj = json.loads(criteria.decode())
-        bucket = data_obj["bucket"]
-        regex = data_obj["regex"]
+        criteria_info = json.loads(criteria.decode())
+        bucket = criteria_info["bucket"]
+        regex = criteria_info["regex"]
         files = self._list_parquet_files(bucket)
         for file in files:
             file_path = os.path.join(self.bucket_dir, file)
@@ -305,22 +305,24 @@ class ShootsServer(flight.FlightServerBase):
             ```
         """
 
-        action, data = action.type, action.body.to_pybytes().decode()
-        if data:
-            data = json.loads(data)
+        action, action_bytes = action.type, action.body.to_pybytes().decode()
+        action_info = None
+        if action_bytes:
+            action_info = json.loads(action_bytes)
+
         if action == "delete":
-            return self._delete(data)
+            return self._delete(action_info)
         if action == "buckets":
             return self._buckets()
         if action == "delete_bucket":
-            return self._delete_bucket(data)
+            return self._delete_bucket(action_info)
         if action == "shutdown":
             return self.shutdown()
         if action == "resample":
-            if data.get("sql",False):
-                return self._resample_with_sql(data)
+            if action_info.get("sql",False):
+                return self._resample_with_sql(action_info)
             else:
-                return self._resample_time_series(data)
+                return self._resample_time_series(action_info)
     
     def _resample_with_sql(self, data):
         source = data["source"]
