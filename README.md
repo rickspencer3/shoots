@@ -71,7 +71,7 @@ shoots = ShootsClient("localhost", 8081)
 shoots.shutdown()
 ```
 ### from python code
-You can also call it from a thread in Python. Assuming you ran the server on thread:
+The Shoots shutdown function handles the threading, so you can simply call it:
 
 ```python
 server.shutdown()
