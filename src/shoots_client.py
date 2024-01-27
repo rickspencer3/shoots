@@ -254,11 +254,11 @@ class ShootsClient:
         try:
             req = PutRequest(dataframe=dataframe, name=name, mode=mode, bucket=bucket)
 
-            command = json.dumps({"name": req.name,
+            command_info = json.dumps({"name": req.name,
                                  "mode": req.mode.value,
                                  "bucket":bucket}).encode()
             
-            descriptor = FlightDescriptor.for_command(command)
+            descriptor = FlightDescriptor.for_command(command_info)
             table = pa.Table.from_pandas(req.dataframe)
 
             writer, _ = self.client.do_put(descriptor, table.schema)
@@ -302,11 +302,11 @@ class ShootsClient:
         """
         try:
             req = GetRequest(name=name, sql=sql, bucket=bucket)
-            ticket_data = {"name":req.name, "bucket":req.bucket}
+            ticket_info = {"name":req.name, "bucket":req.bucket}
             if sql is not None:
-                ticket_data["sql"] = req.sql
+                ticket_info["sql"] = req.sql
 
-            ticket_bytes = json.dumps(ticket_data)
+            ticket_bytes = json.dumps(ticket_info)
             ticket = Ticket(ticket_bytes)
             reader = self.client.do_get(ticket)
             return reader.read_all().to_pandas()
@@ -333,8 +333,8 @@ class ShootsClient:
             print(bucket_list)
             ```
         """
-        action_obj = {}
-        bytes = json.dumps(action_obj).encode()
+        action_info = {}
+        bytes = json.dumps(action_info).encode()
         action = Action("buckets",bytes)
         result = self.client.do_action(action)
         return self._flight_result_to_list(result)
@@ -368,9 +368,9 @@ class ShootsClient:
             ```
         """
         req = DeleteBucketRequest(name=name, mode=mode)
-        action_obj = {"name":req.name, "mode":req.mode.value}
-        bytes = json.dumps(action_obj).encode()
-        action = Action("delete_bucket",bytes)
+        action_info = {"name":req.name, "mode":req.mode.value}
+        aciton_bytes = json.dumps(action_info).encode()
+        action = Action("delete_bucket",aciton_bytes)
         result = self.client.do_action(action)
         return self._flight_result_to_string(result)       
 
@@ -402,8 +402,8 @@ class ShootsClient:
             the server does not have any dataframes. The 'schema' in the returned dictionary is 
             an Apache Arrow schema object.
         """
-        descriptor_data = {"bucket":bucket, "regex":regex}
-        descriptor_bytes = json.dumps(descriptor_data).encode()
+        descriptor_info = {"bucket":bucket, "regex":regex}
+        descriptor_bytes = json.dumps(descriptor_info).encode()
         flights = self.client.list_flights(criteria=descriptor_bytes)
         dataframes = []
         for flight in flights:
@@ -433,8 +433,8 @@ class ShootsClient:
             This method should be used with caution as it will stop the server and terminate 
             all ongoing operations.
         """
-        action_description = json.dumps({}).encode()
-        action = Action("shutdown",action_description)
+        action_bytes = json.dumps({}).encode()
+        action = Action("shutdown",action_bytes)
         result = self.client.do_action(action)
         return self._flight_result_to_string(result)
 
@@ -467,8 +467,8 @@ class ShootsClient:
             Be cautious when using this method as deleting a dataframe is irreversible. Ensure 
             that the dataframe is correctly specified.
         """
-        action_description = json.dumps({"name":name, "bucket":bucket}).encode()
-        action = Action("delete",action_description)
+        action_bytes = json.dumps({"name":name, "bucket":bucket}).encode()
+        action = Action("delete",action_bytes)
         result = self.client.do_action(action)
 
         return self._flight_result_to_string(result)
@@ -539,21 +539,21 @@ class ShootsClient:
                 source_bucket=source_bucket,
                 target_bucket=target_bucket)
 
-        resample_data = {"source":req.source,
+        resample_info = {"source":req.source,
                 "target":req.target,
                 "mode":mode.value,
                 "source_bucket":source_bucket,
                 "target_bucket":target_bucket}
         
         if(sql):
-            resample_data["sql"] = req.sql
+            resample_info["sql"] = req.sql
         else:
-            resample_data["rule"] = req.rule
-            resample_data["time_col"] = req.time_col
-            resample_data["aggregation_func"] = req.aggregation_func
+            resample_info["rule"] = req.rule
+            resample_info["time_col"] = req.time_col
+            resample_info["aggregation_func"] = req.aggregation_func
         
-        bytes = json.dumps(resample_data).encode()
-        action = Action("resample",bytes)
+        action_bytes = json.dumps(resample_info).encode()
+        action = Action("resample",action_bytes)
         result = self.client.do_action(action)
         return json.loads(self._flight_result_to_string(result))
       
