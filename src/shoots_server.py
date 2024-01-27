@@ -538,6 +538,8 @@ def _read_cert_files(cert_file, key_file):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Starts the Shoots Flight Server.')
+
+    # Define command line arguments
     parser.add_argument('--port', type=int, default=8081, help='Port number to run the Flight server on.')
     parser.add_argument('--bucket_dir', type=str, default='buckets', help='Path to the bucket directory.')
     parser.add_argument('--host', type=str, default='localhost', help='Host IP address for where the server will run.')
@@ -546,6 +548,13 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # Overwrite with environment variables if they are set
+    args.port = int(os.getenv('SHOOTS_PORT', args.port))
+    args.bucket_dir = os.getenv('SHOOTS_BUCKET_DIR', args.bucket_dir)
+    args.host = os.getenv('SHOOTS_HOST', args.host)
+    args.cert_file = os.getenv('SHOOTS_CERT_FILE', args.cert_file)
+    args.key_file = os.getenv('SHOOTS_KEY_FILE', args.key_file)
+
     if args.cert_file is not None and args.key_file is not None:
         location = flight.Location.for_grpc_tls(args.host, args.port)
         certs = _read_cert_files(args.cert_file, args.key_file)
@@ -553,11 +562,9 @@ if __name__ == "__main__":
         server = ShootsServer(location,
                               bucket_dir=args.bucket_dir,
                               certs=certs)
-    # Check if both cert_file and key_file are None
     elif args.cert_file is None and args.key_file is None:
         location = flight.Location.for_grpc_tcp(args.host, args.port)
         server = ShootsServer(location, bucket_dir=args.bucket_dir)
-    # If one is None and the other is not, raise an error
     else:
         raise ValueError("Both cert_file and key_file must be provided, or neither should be.")
 
