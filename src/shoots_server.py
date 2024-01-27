@@ -302,6 +302,9 @@ class ShootsServer(flight.FlightServerBase):
             action = Action("resample",bytes)
             result = client.do_action(action)
 
+            # ping
+            result = self.shoots_client.ping() # result should be pong
+
             ```
         """
 
@@ -323,6 +326,9 @@ class ShootsServer(flight.FlightServerBase):
                 return self._resample_with_sql(action_info)
             else:
                 return self._resample_time_series(action_info)
+        if action == "ping":
+            result = flight.Result(b'pong')
+            return [result]
     
     def _resample_with_sql(self, resample_info):
         source = resample_info["source"]
@@ -405,7 +411,8 @@ class ShootsServer(flight.FlightServerBase):
             ("buckets", "List buckets"),
             ("delete_bucket", "Delete a bucket"),
             ("shutdown", "Shutdown the server"),
-            ("resample", "Conversion and resampling of time series or with a sql query")
+            ("resample", "Conversion and resampling of time series or with a sql query"),
+            ("ping", "Convenience action for testing if the server is functional")
         ]
 
         return [flight.ActionType(action, description) for action, description in actions]

@@ -294,6 +294,11 @@ class TestClient(unittest.TestCase):
         self.shoots_client.delete("test2",
                         bucket="listybucket")
 
+
+    def test_ping(self):
+        result = self.shoots_client.ping()
+        self.assertCountEqual(result,"pong")
+
 server_cert = """-----BEGIN CERTIFICATE-----
 MIIDrDCCApSgAwIBAgIUD+l0waPPxuBtzvr6Rw221CugWIwwDQYJKoZIhvcNAQEL
 BQAwYDELMAkGA1UEBhMCdXMxCzAJBgNVBAgMAm1kMRIwEAYDVQQHDAlyb2Nrdmls
