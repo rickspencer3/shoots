@@ -1,28 +1,20 @@
-.. shoots documentation master file, created by
-   sphinx-quickstart on Sun Jan 28 07:55:38 2024.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Welcome to the Shoots Documentation
+===================================
 
-Welcome to shoots's documentation!
-==================================
+This documentation covers the classes `ShootsClient` and `ShootsServer` from the `shoots_client.py` and `shoots_server.py` modules, respectively.
+
+Contents
+--------
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
+   shoots_client
+   shoots_server
 
-
-Indices and tables
+Indices and Tables
 ==================
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
-modules
-========
-.. automodule:: shoots_server
-   :members:
-
-.. automodule:: shoots_client
-   :members:

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+
+<html lang="Python" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>ShootsServer Class &#8212; shoots 0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <script src="_static/documentation_options.js?v=42ea76e9"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="ShootsClient Class" href="shoots_client.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="shootsserver-class">
+<h1>ShootsServer Class<a class="headerlink" href="#shootsserver-class" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="shoots_server.ShootsServer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">shoots_server.</span></span><span class="sig-name descname"><span class="pre">ShootsServer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">location</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bucket_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">certs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">FlightServerBase</span></code></p>
+<p>A FlightServer for managing and serving pandas datasets.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>location (pyarrow.flight.Location): The server location.
+bucket_dir (str): Directory path for storing parquet datasets.</p>
+</dd>
+<dt>Note:</dt><dd><p>You most likely don't want to use the server directly, except for starting it up. It is easiest to interact with the server via ShootsClient.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_server.ShootsServer.do_action">
+<span class="sig-name descname"><span class="pre">do_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer.do_action" title="Link to this definition">¶</a></dt>
+<dd><p>Performs a specific action based on the request.</p>
+<p>do_action() is a generic handler that receives instructions through the action &quot;type&quot; (i.e. name of the action), and a json payload for extra instructions.</p>
+<p>delete_bucket has an optional mode to determine the behavior if there are dataframes in the bucket.
+error - (default) raise a FlightServerError and leave the bucket untouched
+delete - delete all of the contents of the bucket and the bucket itself.</p>
+<dl>
+<dt>Args:.</dt><dd><p>action (flight.Action): An action to be performed.</p>
+</dd>
+<dt>Raises:</dt><dd><p>FlightServerError</p>
+</dd>
+<dt>Returns:</dt><dd><p>Flight Result.</p>
+<p>buckets returns FlightResult with a list of bucket names, others return a message.</p>
+</dd>
+<dt>Example:</dt><dd><p>The different actions require different payloads.</p>
+<p><a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>python
+client = FlightClient(f&quot;grpc://{config.host}:{config.port}&quot;)</p>
+<p># delete example with optional bucket name
+action_description = json.dumps({&quot;name&quot;:&quot;my_dataframe&quot;, &quot;bucket&quot;:&quot;my_bucket&quot;}).encode()
+action = Action(&quot;delete&quot;,action_description)
+client.do_action(action)</p>
+<p># buckets example
+bytes = json.dumps({}).encode()
+action = Action(&quot;buckets&quot;,bytes)
+result = client.do_action(action)
+for r in result:</p>
+<blockquote>
+<div><p>print(r.body.to_pybytes().decode())</p>
+</div></blockquote>
+<p># delete_bucket example
+action_obj = {&quot;name&quot;:&quot;my_bucket, &quot;mode&quot;:&quot;error&quot;}
+bytes = json.dumps(action_obj).encode()
+action = Action(&quot;delete_bucket&quot;,bytes)
+client.do_action(action)</p>
+<p># shutdown example
+bytes = json.dumps({}).encode()
+action = Action(&quot;shutdown&quot;, bytes)
+client.do_action(action)</p>
+<p># resample time series example
+resample_data = {&quot;source&quot;:&quot;my_original_dataframe&quot;,
+&quot;target&quot;:&quot;my_new_dataframe&quot;,
+&quot;rule&quot;:&quot;1s&quot;,
+&quot;time_col&quot;:&quot;my_timestamp_column&quot;,
+&quot;aggregation_func&quot;:&quot;mean&quot;}</p>
+<p>bytes = json.dumps(resample_data).encode()
+action = Action(&quot;resample&quot;,bytes)
+result = client.do_action(action)</p>
+<p># resample with a sql query example
+resample_data = {&quot;source&quot;:&quot;my_original_dataframe&quot;,
+&quot;target&quot;:&quot;my_new_dataframe&quot;,
+&quot;sql&quot;:&quot;SElECT * FROM my_original_dataframe LIMIT 10&quot;}</p>
+<p>bytes = json.dumps(resample_data).encode()
+action = Action(&quot;resample&quot;,bytes)
+result = client.do_action(action)</p>
+<p># ping
+result = self.shoots_client.ping() # result should be pong</p>
+<p><a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_server.ShootsServer.do_get">
+<span class="sig-name descname"><span class="pre">do_get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ticket</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer.do_get" title="Link to this definition">¶</a></dt>
+<dd><p>Handles the retrieval of a dataframe based on the given ticket.</p>
+<p>You can optionally specify a bucket where the dataframe is stored.</p>
+<p>You can optionally specify a SQL statement which will use the DataFusion query engine to query the data before returned the dataframe.</p>
+<dl>
+<dt>Args:</dt><dd><p>ticket (flight.Ticket): The ticket object containing the dataset request details.</p>
+</dd>
+<dt>Returns:</dt><dd><p>flight.RecordBatchStream: A stream of record batches for the requested dataset.</p>
+</dd>
+<dt>Raises:</dt><dd><p>flight.FlightServerError: If there is an issue in processing the request.</p>
+</dd>
+<dt>Example:</dt><dd><p>To request a dataset, create a ticket with the required information in JSON format.</p>
+<p><a href="#id9"><span class="problematic" id="id10">``</span></a><a href="#id11"><span class="problematic" id="id12">`</span></a>python
+import json
+from pyarrow import flight</p>
+<p># Define the request details
+# sql and bucket are both optional
+# Leave out the sql statement to return the whole dataframe
+ticket_data = {</p>
+<blockquote>
+<div><p>&quot;name&quot;: &quot;my_dataset&quot;,
+&quot;bucket&quot;: &quot;my_bucket&quot;,
+&quot;sql&quot;: &quot;SELECT * FROM my_dataset WHERE condition&quot;</p>
+</div></blockquote>
+<p>}</p>
+<p># Encode the request as a JSON string
+ticket_bytes = json.dumps(request).encode()</p>
+<p># Create a ticket object
+ticket = flight.Ticket(ticket_bytes)</p>
+<p># Use this ticket with the do_get method of the FlightServer
+reader = self.client.do_get(ticket)
+<a href="#id13"><span class="problematic" id="id14">``</span></a><a href="#id15"><span class="problematic" id="id16">`</span></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_server.ShootsServer.do_put">
+<span class="sig-name descname"><span class="pre">do_put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">descriptor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">writer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer.do_put" title="Link to this definition">¶</a></dt>
+<dd><p>Handles uploading or appending data to a dataframe.</p>
+<dl>
+<dt>You can optionally specify a mode to determine the behavior in case there is already a dataframe with the same name stored:</dt><dd><ul class="simple">
+<li><p>error - (default) The put operation will return a FlightServerError, and no changes will take place</p></li>
+<li><p>append - Add the data in the dataframe to the existing dataframe of the same name.</p></li>
+<li><p>replace - Delete all of the data in the existing dataframe and replace it with the new data.</p></li>
+</ul>
+<p>You can optionally specific a bucket. A bucket is top level organization for your dataframes. Buckets will be created automatically on write if needed.</p>
+</dd>
+<dt>Args:</dt><dd><p>descriptor (flight.FlightDescriptor): Descriptor containing details about the dataset.</p>
+</dd>
+<dt>Raises:</dt><dd><p>flight.FlightServerError: If an error occurs during data processing.</p>
+</dd>
+<dt>Example:</dt><dd><p>To write dataset, create a Ticket with the required information in JSON format.</p>
+<p><a href="#id17"><span class="problematic" id="id18">``</span></a><a href="#id19"><span class="problematic" id="id20">`</span></a>python
+# create the json for the FlightDescriptor. Mode and bucket are optional.
+descriptor_bytes = json.dumps({&quot;name&quot;: &quot;my_bucket&quot;,</p>
+<blockquote>
+<div><p>&quot;mode&quot;: &quot;error&quot;, 
+&quot;bucket&quot;:&quot;my_bucket&quot;}).encode()</p>
+</div></blockquote>
+<p># create the descriptor
+descriptor = FlightDescriptor.for_command(command)</p>
+<p># convert the dataframe to an arrow table
+table = pa.Table.from_pandas(df)</p>
+<p># call do_put() to get back a writer
+writer, _ = self.client.do_put(descriptor, table.schema)</p>
+<p># write the data and close the writer
+writer.write_table(table)
+writer.close()
+<a href="#id21"><span class="problematic" id="id22">``</span></a><a href="#id23"><span class="problematic" id="id24">`</span></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_server.ShootsServer.list_actions">
+<span class="sig-name descname"><span class="pre">list_actions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer.list_actions" title="Link to this definition">¶</a></dt>
+<dd><p>Lists all available actions that the server can perform.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>context: The server context.</p>
+</dd>
+<dt>Returns:</dt><dd><p>List[flight.ActionType]: A list of available actions.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_server.ShootsServer.list_flights">
+<span class="sig-name descname"><span class="pre">list_flights</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">criteria</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer.list_flights" title="Link to this definition">¶</a></dt>
+<dd><p>Lists available dataframes based on given criteria.</p>
+<p>You can optionally specify a bucket name to list dataframes in the specified bucket.</p>
+<dl>
+<dt>Args:</dt><dd><p>criteria: Criteria to filter datasets.</p>
+</dd>
+<dt>Yields:</dt><dd><p>flight.FlightInfo: Information about each available flight (dataset).</p>
+</dd>
+<dt>Example:</dt><dd><dl>
+<dt><a href="#id25"><span class="problematic" id="id26">``</span></a><a href="#id27"><span class="problematic" id="id28">`</span></a>python</dt><dd><p># create the criteria. bucket can be None
+criteria_data = {&quot;bucket&quot;:&quot;my_bucket&quot;, &quot;regex&quot;:None}
+criateria_bytes = json.dumps(descriptor_data).encode()</p>
+<p># get the list of FlightInfos.
+flights = self.client.list_flights(criteria=descriptor_bytes)</p>
+<p># iterate the FlightInfos
+for flight in flights:</p>
+<blockquote>
+<div><p>print(flight.descriptor.path[0].decode(), flight.schema)</p>
+</div></blockquote>
+</dd>
+</dl>
+<p><a href="#id29"><span class="problematic" id="id30">``</span></a><a href="#id31"><span class="problematic" id="id32">`</span></a></p>
+</dd>
+<dt>Note:</dt><dd><p>The regex criteria is not yet implemented on the server.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_server.ShootsServer.serve">
+<span class="sig-name descname"><span class="pre">serve</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer.serve" title="Link to this definition">¶</a></dt>
+<dd><p>Serve until shutdown is called.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_server.ShootsServer.shutdown">
+<span class="sig-name descname"><span class="pre">shutdown</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer.shutdown" title="Link to this definition">¶</a></dt>
+<dd><p>Gracefully shuts down the server.</p>
+<dl>
+<dt>Note:</dt><dd><p>shutdown() is not exposed to the FlightClient, but it can be accessed via do_action</p>
+</dd>
+<dt>Example:</dt><dd><p><a href="#id33"><span class="problematic" id="id34">``</span></a><a href="#id35"><span class="problematic" id="id36">`</span></a>python
+action = Action(&quot;shutdown&quot;,json.dumps({}).encode())
+result = self.client.do_action(action)
+for r in res:</p>
+<blockquote>
+<div><p>print(r.body.to_pybytes().decode())
+# prints [&quot;shutdown command received&quot;]</p>
+</div></blockquote>
+<p><a href="#id37"><span class="problematic" id="id38">``</span></a><a href="#id39"><span class="problematic" id="id40">`</span></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">shoots</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="shoots_client.html">ShootsClient Class</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">ShootsServer Class</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#shoots_server.ShootsServer"><code class="docutils literal notranslate"><span class="pre">ShootsServer</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="shoots_client.html" title="previous chapter">ShootsClient Class</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Rick Spencer.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/shoots_server.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
