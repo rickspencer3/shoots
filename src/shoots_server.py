@@ -7,6 +7,8 @@ import json
 import shutil
 import threading
 import argparse
+import jwt
+import datetime
 
 put_modes = ["error", "append", "replace"]
 
@@ -26,6 +28,7 @@ class ShootsServer(flight.FlightServerBase):
                  location,
                  bucket_dir,
                  certs = None,
+                 secret = None,
                  *args, **kwargs):
         """
         Initializes the ShootsServer.
@@ -38,7 +41,11 @@ class ShootsServer(flight.FlightServerBase):
         """
         self.location = location
         self.bucket_dir = bucket_dir
+        self.secret = secret
+        # set up the bucket directory
         os.makedirs(self.bucket_dir, exist_ok=True)
+
+        # set up TLS is specified
         if certs == None:
             super(ShootsServer, self).__init__(location, *args, **kwargs)
         else:
@@ -47,6 +54,17 @@ class ShootsServer(flight.FlightServerBase):
                                     [certs],
                                     False, # verify_client
                                     *args, **kwargs)
+    
+        #create a jwt is specified
+        if self.secret:
+            payload = {
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=365),
+            'iat': datetime.datetime.utcnow(),
+            'server': location.uri.decode(),
+            'type':'admin'}
+
+            token = jwt.encode(payload, secret, algorithm='HS256')
+            print(f"JWT for server access: {token}")
             
     def do_get(self, context, ticket):
         """
@@ -544,8 +562,9 @@ if __name__ == "__main__":
     parser.add_argument('--port', type=int, default=8081, help='Port number to run the Flight server on.')
     parser.add_argument('--bucket_dir', type=str, default='buckets', help='Path to the bucket directory.')
     parser.add_argument('--host', type=str, default='localhost', help='Host IP address for where the server will run.')
-    parser.add_argument('--cert_file', type=str, default=None, help='Path to file for cert file for TLS')
-    parser.add_argument('--key_file', type=str, default=None, help='Path to file for key file for TLS')
+    parser.add_argument('--cert_file', type=str, default=None, help='Path to file for cert file for TLS.')
+    parser.add_argument('--key_file', type=str, default=None, help='Path to file for key file for TLS.')
+    parser.add_argument('--secret', type=str, default=None, help='A secret key used to generate a JWT required for making calls from a client. If no secret is specified, then no JWT is required.')
 
     args = parser.parse_args()
 
@@ -555,6 +574,7 @@ if __name__ == "__main__":
     args.host = os.getenv('SHOOTS_HOST', args.host)
     args.cert_file = os.getenv('SHOOTS_CERT_FILE', args.cert_file)
     args.key_file = os.getenv('SHOOTS_KEY_FILE', args.key_file)
+    args.secret = os.getenv('SHOOTS_SECRET', args.secret)
 
     if args.cert_file is not None and args.key_file is not None:
         location = flight.Location.for_grpc_tls(args.host, args.port)
@@ -562,10 +582,13 @@ if __name__ == "__main__":
 
         server = ShootsServer(location,
                               bucket_dir=args.bucket_dir,
-                              certs=certs)
+                              certs=certs,
+                              secret=args.secret
+                              )
+        
     elif args.cert_file is None and args.key_file is None:
         location = flight.Location.for_grpc_tcp(args.host, args.port)
-        server = ShootsServer(location, bucket_dir=args.bucket_dir)
+        server = ShootsServer(location, bucket_dir=args.bucket_dir, secret=args.secret)
     else:
         raise ValueError("Both cert_file and key_file must be provided, or neither should be.")
 
