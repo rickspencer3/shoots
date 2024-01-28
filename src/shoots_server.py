@@ -42,8 +42,14 @@ class ShootsServer(flight.FlightServerBase):
         self.location = location
         self.bucket_dir = bucket_dir
         self.secret = secret
+
         # set up the bucket directory
         os.makedirs(self.bucket_dir, exist_ok=True)
+
+        #print admin token
+        if self.secret:
+            print("Generating admin JWT:")
+            print(self.generate_admin_jwt())
 
         # set up TLS is specified
         if certs == None:
@@ -55,18 +61,18 @@ class ShootsServer(flight.FlightServerBase):
                                     False, # verify_client
                                     *args, **kwargs)
     
-        #create a jwt is specified
+    def generate_admin_jwt(self):
         if self.secret:
             payload = {
             'exp': datetime.datetime.utcnow() + datetime.timedelta(days=365),
             'iat': datetime.datetime.utcnow(),
-            'server': location.uri.decode(),
+            'server': self.location.uri.decode(),
             'type':'admin'}
 
-            token = jwt.encode(payload, secret, algorithm='HS256')
-            print("Admin JWT:")
-            print(token)
-            
+            return jwt.encode(payload, self.secret, algorithm='HS256')
+        else:
+            raise ValueError("Server must be started with a secret to use JWTs")
+
     def do_get(self, context, ticket):
         """
         Handles the retrieval of a dataframe based on the given ticket.
