@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+
+<html lang="Python" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Welcome to shoots&#39;s documentation! &#8212; shoots 0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <script src="_static/documentation_options.js?v=42ea76e9"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="welcome-to-shoots-s-documentation">
+<h1>Welcome to shoots's documentation!<a class="headerlink" href="#welcome-to-shoots-s-documentation" title="Link to this heading">¶</a></h1>
+<div class="toctree-wrapper compound">
+</div>
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+<section id="module-shoots_server">
+<span id="modules"></span><h1>modules<a class="headerlink" href="#module-shoots_server" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="shoots_server.ShootsServer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">shoots_server.</span></span><span class="sig-name descname"><span class="pre">ShootsServer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">location</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bucket_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">certs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer" title="Link to this definition">¶</a></dt>
+<dd><p>A FlightServer for managing and serving pandas datasets.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>location (pyarrow.flight.Location): The server location.
+bucket_dir (str): Directory path for storing parquet datasets.</p>
+</dd>
+<dt>Note:</dt><dd><p>You most likely don't want to use the server directly, except for starting it up. It is easiest to interact with the server via ShootsClient.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_server.ShootsServer.do_action">
+<span class="sig-name descname"><span class="pre">do_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer.do_action" title="Link to this definition">¶</a></dt>
+<dd><p>Performs a specific action based on the request.</p>
+<p>do_action() is a generic handler that receives instructions through the action &quot;type&quot; (i.e. name of the action), and a json payload for extra instructions.</p>
+<p>delete_bucket has an optional mode to determine the behavior if there are dataframes in the bucket.
+error - (default) raise a FlightServerError and leave the bucket untouched
+delete - delete all of the contents of the bucket and the bucket itself.</p>
+<dl>
+<dt>Args:.</dt><dd><p>action (flight.Action): An action to be performed.</p>
+</dd>
+<dt>Raises:</dt><dd><p>FlightServerError</p>
+</dd>
+<dt>Returns:</dt><dd><p>Flight Result.</p>
+<p>buckets returns FlightResult with a list of bucket names, others return a message.</p>
+</dd>
+<dt>Example:</dt><dd><p>The different actions require different payloads.</p>
+<p><a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>python
+client = FlightClient(f&quot;grpc://{config.host}:{config.port}&quot;)</p>
+<p># delete example with optional bucket name
+action_description = json.dumps({&quot;name&quot;:&quot;my_dataframe&quot;, &quot;bucket&quot;:&quot;my_bucket&quot;}).encode()
+action = Action(&quot;delete&quot;,action_description)
+client.do_action(action)</p>
+<p># buckets example
+bytes = json.dumps({}).encode()
+action = Action(&quot;buckets&quot;,bytes)
+result = client.do_action(action)
+for r in result:</p>
+<blockquote>
+<div><p>print(r.body.to_pybytes().decode())</p>
+</div></blockquote>
+<p># delete_bucket example
+action_obj = {&quot;name&quot;:&quot;my_bucket, &quot;mode&quot;:&quot;error&quot;}
+bytes = json.dumps(action_obj).encode()
+action = Action(&quot;delete_bucket&quot;,bytes)
+client.do_action(action)</p>
+<p># shutdown example
+bytes = json.dumps({}).encode()
+action = Action(&quot;shutdown&quot;, bytes)
+client.do_action(action)</p>
+<p># resample time series example
+resample_data = {&quot;source&quot;:&quot;my_original_dataframe&quot;,
+&quot;target&quot;:&quot;my_new_dataframe&quot;,
+&quot;rule&quot;:&quot;1s&quot;,
+&quot;time_col&quot;:&quot;my_timestamp_column&quot;,
+&quot;aggregation_func&quot;:&quot;mean&quot;}</p>
+<p>bytes = json.dumps(resample_data).encode()
+action = Action(&quot;resample&quot;,bytes)
+result = client.do_action(action)</p>
+<p># resample with a sql query example
+resample_data = {&quot;source&quot;:&quot;my_original_dataframe&quot;,
+&quot;target&quot;:&quot;my_new_dataframe&quot;,
+&quot;sql&quot;:&quot;SElECT * FROM my_original_dataframe LIMIT 10&quot;}</p>
+<p>bytes = json.dumps(resample_data).encode()
+action = Action(&quot;resample&quot;,bytes)
+result = client.do_action(action)</p>
+<p># ping
+result = self.shoots_client.ping() # result should be pong</p>
+<p><a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_server.ShootsServer.do_get">
+<span class="sig-name descname"><span class="pre">do_get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ticket</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer.do_get" title="Link to this definition">¶</a></dt>
+<dd><p>Handles the retrieval of a dataframe based on the given ticket.</p>
+<p>You can optionally specify a bucket where the dataframe is stored.</p>
+<p>You can optionally specify a SQL statement which will use the DataFusion query engine to query the data before returned the dataframe.</p>
+<dl>
+<dt>Args:</dt><dd><p>ticket (flight.Ticket): The ticket object containing the dataset request details.</p>
+</dd>
+<dt>Returns:</dt><dd><p>flight.RecordBatchStream: A stream of record batches for the requested dataset.</p>
+</dd>
+<dt>Raises:</dt><dd><p>flight.FlightServerError: If there is an issue in processing the request.</p>
+</dd>
+<dt>Example:</dt><dd><p>To request a dataset, create a ticket with the required information in JSON format.</p>
+<p><a href="#id9"><span class="problematic" id="id10">``</span></a><a href="#id11"><span class="problematic" id="id12">`</span></a>python
+import json
+from pyarrow import flight</p>
+<p># Define the request details
+# sql and bucket are both optional
+# Leave out the sql statement to return the whole dataframe
+ticket_data = {</p>
+<blockquote>
+<div><p>&quot;name&quot;: &quot;my_dataset&quot;,
+&quot;bucket&quot;: &quot;my_bucket&quot;,
+&quot;sql&quot;: &quot;SELECT * FROM my_dataset WHERE condition&quot;</p>
+</div></blockquote>
+<p>}</p>
+<p># Encode the request as a JSON string
+ticket_bytes = json.dumps(request).encode()</p>
+<p># Create a ticket object
+ticket = flight.Ticket(ticket_bytes)</p>
+<p># Use this ticket with the do_get method of the FlightServer
+reader = self.client.do_get(ticket)
+<a href="#id13"><span class="problematic" id="id14">``</span></a><a href="#id15"><span class="problematic" id="id16">`</span></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_server.ShootsServer.do_put">
+<span class="sig-name descname"><span class="pre">do_put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">descriptor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">writer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer.do_put" title="Link to this definition">¶</a></dt>
+<dd><p>Handles uploading or appending data to a dataframe.</p>
+<dl>
+<dt>You can optionally specify a mode to determine the behavior in case there is already a dataframe with the same name stored:</dt><dd><ul class="simple">
+<li><p>error - (default) The put operation will return a FlightServerError, and no changes will take place</p></li>
+<li><p>append - Add the data in the dataframe to the existing dataframe of the same name.</p></li>
+<li><p>replace - Delete all of the data in the existing dataframe and replace it with the new data.</p></li>
+</ul>
+<p>You can optionally specific a bucket. A bucket is top level organization for your dataframes. Buckets will be created automatically on write if needed.</p>
+</dd>
+<dt>Args:</dt><dd><p>descriptor (flight.FlightDescriptor): Descriptor containing details about the dataset.</p>
+</dd>
+<dt>Raises:</dt><dd><p>flight.FlightServerError: If an error occurs during data processing.</p>
+</dd>
+<dt>Example:</dt><dd><p>To write dataset, create a Ticket with the required information in JSON format.</p>
+<p><a href="#id17"><span class="problematic" id="id18">``</span></a><a href="#id19"><span class="problematic" id="id20">`</span></a>python
+# create the json for the FlightDescriptor. Mode and bucket are optional.
+descriptor_bytes = json.dumps({&quot;name&quot;: &quot;my_bucket&quot;,</p>
+<blockquote>
+<div><p>&quot;mode&quot;: &quot;error&quot;, 
+&quot;bucket&quot;:&quot;my_bucket&quot;}).encode()</p>
+</div></blockquote>
+<p># create the descriptor
+descriptor = FlightDescriptor.for_command(command)</p>
+<p># convert the dataframe to an arrow table
+table = pa.Table.from_pandas(df)</p>
+<p># call do_put() to get back a writer
+writer, _ = self.client.do_put(descriptor, table.schema)</p>
+<p># write the data and close the writer
+writer.write_table(table)
+writer.close()
+<a href="#id21"><span class="problematic" id="id22">``</span></a><a href="#id23"><span class="problematic" id="id24">`</span></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_server.ShootsServer.list_actions">
+<span class="sig-name descname"><span class="pre">list_actions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer.list_actions" title="Link to this definition">¶</a></dt>
+<dd><p>Lists all available actions that the server can perform.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>context: The server context.</p>
+</dd>
+<dt>Returns:</dt><dd><p>List[flight.ActionType]: A list of available actions.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_server.ShootsServer.list_flights">
+<span class="sig-name descname"><span class="pre">list_flights</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">criteria</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer.list_flights" title="Link to this definition">¶</a></dt>
+<dd><p>Lists available dataframes based on given criteria.</p>
+<p>You can optionally specify a bucket name to list dataframes in the specified bucket.</p>
+<dl>
+<dt>Args:</dt><dd><p>criteria: Criteria to filter datasets.</p>
+</dd>
+<dt>Yields:</dt><dd><p>flight.FlightInfo: Information about each available flight (dataset).</p>
+</dd>
+<dt>Example:</dt><dd><dl>
+<dt><a href="#id25"><span class="problematic" id="id26">``</span></a><a href="#id27"><span class="problematic" id="id28">`</span></a>python</dt><dd><p># create the criteria. bucket can be None
+criteria_data = {&quot;bucket&quot;:&quot;my_bucket&quot;, &quot;regex&quot;:None}
+criateria_bytes = json.dumps(descriptor_data).encode()</p>
+<p># get the list of FlightInfos.
+flights = self.client.list_flights(criteria=descriptor_bytes)</p>
+<p># iterate the FlightInfos
+for flight in flights:</p>
+<blockquote>
+<div><p>print(flight.descriptor.path[0].decode(), flight.schema)</p>
+</div></blockquote>
+</dd>
+</dl>
+<p><a href="#id29"><span class="problematic" id="id30">``</span></a><a href="#id31"><span class="problematic" id="id32">`</span></a></p>
+</dd>
+<dt>Note:</dt><dd><p>The regex criteria is not yet implemented on the server.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_server.ShootsServer.serve">
+<span class="sig-name descname"><span class="pre">serve</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer.serve" title="Link to this definition">¶</a></dt>
+<dd><p>Serve until shutdown is called.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_server.ShootsServer.shutdown">
+<span class="sig-name descname"><span class="pre">shutdown</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer.shutdown" title="Link to this definition">¶</a></dt>
+<dd><p>Gracefully shuts down the server.</p>
+<dl>
+<dt>Note:</dt><dd><p>shutdown() is not exposed to the FlightClient, but it can be accessed via do_action</p>
+</dd>
+<dt>Example:</dt><dd><p><a href="#id33"><span class="problematic" id="id34">``</span></a><a href="#id35"><span class="problematic" id="id36">`</span></a>python
+action = Action(&quot;shutdown&quot;,json.dumps({}).encode())
+result = self.client.do_action(action)
+for r in res:</p>
+<blockquote>
+<div><p>print(r.body.to_pybytes().decode())
+# prints [&quot;shutdown command received&quot;]</p>
+</div></blockquote>
+<p><a href="#id37"><span class="problematic" id="id38">``</span></a><a href="#id39"><span class="problematic" id="id40">`</span></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class" id="module-shoots_client">
+<dt class="sig sig-object py" id="shoots_client.BucketDeleteMode">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">shoots_client.</span></span><span class="sig-name descname"><span class="pre">BucketDeleteMode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.BucketDeleteMode" title="Link to this definition">¶</a></dt>
+<dd><p>Enum for specifying the mode of operation when deleting a bucket. Used with ShootsClient.delete_bucket().</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>DELETE_CONTENTS: Delete the bucket and its contents.
+ERROR: (default) Raise an error if the bucket is not empty.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="shoots_client.ClientConfig">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">shoots_client.</span></span><span class="sig-name descname"><span class="pre">ClientConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_case_sensitive</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DotenvType</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">PosixPath('.')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_file_encoding</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_env_nested_delimiter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_secrets_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">host</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.ClientConfig" title="Link to this definition">¶</a></dt>
+<dd><p>Internal class for configuration for ShootsClient using pydantic BaseSettings for environment management.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="shoots_client.ClientConfig.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">SettingsConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'arbitrary_types_allowed':</span> <span class="pre">True,</span> <span class="pre">'case_sensitive':</span> <span class="pre">False,</span> <span class="pre">'env_file':</span> <span class="pre">None,</span> <span class="pre">'env_file_encoding':</span> <span class="pre">None,</span> <span class="pre">'env_nested_delimiter':</span> <span class="pre">None,</span> <span class="pre">'env_prefix':</span> <span class="pre">'',</span> <span class="pre">'extra':</span> <span class="pre">'forbid',</span> <span class="pre">'protected_namespaces':</span> <span class="pre">('model_',</span> <span class="pre">'settings_'),</span> <span class="pre">'secrets_dir':</span> <span class="pre">None,</span> <span class="pre">'validate_default':</span> <span class="pre">True}</span></em><a class="headerlink" href="#shoots_client.ClientConfig.model_config" title="Link to this definition">¶</a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="shoots_client.ClientConfig.model_fields">
+<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">FieldInfo</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'host':</span> <span class="pre">FieldInfo(annotation=str,</span> <span class="pre">required=True),</span> <span class="pre">'port':</span> <span class="pre">FieldInfo(annotation=int,</span> <span class="pre">required=True),</span> <span class="pre">'tls':</span> <span class="pre">FieldInfo(annotation=bool,</span> <span class="pre">required=True)}</span></em><a class="headerlink" href="#shoots_client.ClientConfig.model_fields" title="Link to this definition">¶</a></dt>
+<dd><p>Metadata about the fields defined on the model,
+mapping of field names to [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo].</p>
+<p>This replaces <cite>Model.__fields__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="shoots_client.DeleteBucketRequest">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">shoots_client.</span></span><span class="sig-name descname"><span class="pre">DeleteBucketRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#shoots_client.BucketDeleteMode" title="shoots_client.BucketDeleteMode"><span class="pre">BucketDeleteMode</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">BucketDeleteMode.ERROR</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.DeleteBucketRequest" title="Link to this definition">¶</a></dt>
+<dd><p>Internal class for configuring a delete_bucket request.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="shoots_client.DeleteBucketRequest.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#shoots_client.DeleteBucketRequest.model_config" title="Link to this definition">¶</a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="shoots_client.DeleteBucketRequest.model_fields">
+<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">FieldInfo</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'mode':</span> <span class="pre">FieldInfo(annotation=BucketDeleteMode,</span> <span class="pre">required=False,</span> <span class="pre">default=&lt;BucketDeleteMode.ERROR:</span> <span class="pre">'error'&gt;),</span> <span class="pre">'name':</span> <span class="pre">FieldInfo(annotation=str,</span> <span class="pre">required=True)}</span></em><a class="headerlink" href="#shoots_client.DeleteBucketRequest.model_fields" title="Link to this definition">¶</a></dt>
+<dd><p>Metadata about the fields defined on the model,
+mapping of field names to [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo].</p>
+<p>This replaces <cite>Model.__fields__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="shoots_client.DeleteRequest">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">shoots_client.</span></span><span class="sig-name descname"><span class="pre">DeleteRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.DeleteRequest" title="Link to this definition">¶</a></dt>
+<dd><p>Internal class for configuring a delete request.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="shoots_client.DeleteRequest.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#shoots_client.DeleteRequest.model_config" title="Link to this definition">¶</a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="shoots_client.DeleteRequest.model_fields">
+<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">FieldInfo</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'name':</span> <span class="pre">FieldInfo(annotation=str,</span> <span class="pre">required=True)}</span></em><a class="headerlink" href="#shoots_client.DeleteRequest.model_fields" title="Link to this definition">¶</a></dt>
+<dd><p>Metadata about the fields defined on the model,
+mapping of field names to [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo].</p>
+<p>This replaces <cite>Model.__fields__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="shoots_client.GetRequest">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">shoots_client.</span></span><span class="sig-name descname"><span class="pre">GetRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sql</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bucket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.GetRequest" title="Link to this definition">¶</a></dt>
+<dd><p>Internal class for configuring a get request.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="shoots_client.GetRequest.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#shoots_client.GetRequest.model_config" title="Link to this definition">¶</a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="shoots_client.GetRequest.model_fields">
+<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">FieldInfo</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'bucket':</span> <span class="pre">FieldInfo(annotation=Union[str,</span> <span class="pre">NoneType],</span> <span class="pre">required=False),</span> <span class="pre">'name':</span> <span class="pre">FieldInfo(annotation=str,</span> <span class="pre">required=True),</span> <span class="pre">'sql':</span> <span class="pre">FieldInfo(annotation=Union[str,</span> <span class="pre">NoneType],</span> <span class="pre">required=False)}</span></em><a class="headerlink" href="#shoots_client.GetRequest.model_fields" title="Link to this definition">¶</a></dt>
+<dd><p>Metadata about the fields defined on the model,
+mapping of field names to [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo].</p>
+<p>This replaces <cite>Model.__fields__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="shoots_client.ListRequest">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">shoots_client.</span></span><span class="sig-name descname"><span class="pre">ListRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bucket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regex</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.ListRequest" title="Link to this definition">¶</a></dt>
+<dd><p>Internal class for configuring a list request.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="shoots_client.ListRequest.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#shoots_client.ListRequest.model_config" title="Link to this definition">¶</a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="shoots_client.ListRequest.model_fields">
+<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">FieldInfo</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'bucket':</span> <span class="pre">FieldInfo(annotation=Union[str,</span> <span class="pre">NoneType],</span> <span class="pre">required=False),</span> <span class="pre">'regex':</span> <span class="pre">FieldInfo(annotation=Union[str,</span> <span class="pre">NoneType],</span> <span class="pre">required=False)}</span></em><a class="headerlink" href="#shoots_client.ListRequest.model_fields" title="Link to this definition">¶</a></dt>
+<dd><p>Metadata about the fields defined on the model,
+mapping of field names to [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo].</p>
+<p>This replaces <cite>Model.__fields__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="shoots_client.PutMode">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">shoots_client.</span></span><span class="sig-name descname"><span class="pre">PutMode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.PutMode" title="Link to this definition">¶</a></dt>
+<dd><p>Enum for specifying the mode of operation when putting dataframes. Used in ShootsClient.put().</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>REPLACE: Replace existing data.
+APPEND: Append to existing data.
+ERROR: (default) Raise an error if data already exists.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="shoots_client.PutRequest">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">shoots_client.</span></span><span class="sig-name descname"><span class="pre">PutRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataframe</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#shoots_client.PutMode" title="shoots_client.PutMode"><span class="pre">PutMode</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">PutMode.APPEND</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bucket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.PutRequest" title="Link to this definition">¶</a></dt>
+<dd><p>Internal class for configuring a put request</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="shoots_client.PutRequest.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'arbitrary_types_allowed':</span> <span class="pre">True}</span></em><a class="headerlink" href="#shoots_client.PutRequest.model_config" title="Link to this definition">¶</a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="shoots_client.PutRequest.model_fields">
+<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">FieldInfo</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'bucket':</span> <span class="pre">FieldInfo(annotation=Union[str,</span> <span class="pre">NoneType],</span> <span class="pre">required=False),</span> <span class="pre">'dataframe':</span> <span class="pre">FieldInfo(annotation=DataFrame,</span> <span class="pre">required=True),</span> <span class="pre">'mode':</span> <span class="pre">FieldInfo(annotation=PutMode,</span> <span class="pre">required=False,</span> <span class="pre">default=&lt;PutMode.APPEND:</span> <span class="pre">'append'&gt;),</span> <span class="pre">'name':</span> <span class="pre">FieldInfo(annotation=str,</span> <span class="pre">required=True)}</span></em><a class="headerlink" href="#shoots_client.PutRequest.model_fields" title="Link to this definition">¶</a></dt>
+<dd><p>Metadata about the fields defined on the model,
+mapping of field names to [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo].</p>
+<p>This replaces <cite>Model.__fields__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="shoots_client.ResampleRequest">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">shoots_client.</span></span><span class="sig-name descname"><span class="pre">ResampleRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rule</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregation_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#shoots_client.PutMode" title="shoots_client.PutMode"><span class="pre">PutMode</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">PutMode.APPEND</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_bucket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_bucket_bucket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sql</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.ResampleRequest" title="Link to this definition">¶</a></dt>
+<dd><p>Internal class for configuring a resample request.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="shoots_client.ResampleRequest.model_config">
+<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">ConfigDict</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#shoots_client.ResampleRequest.model_config" title="Link to this definition">¶</a></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="shoots_client.ResampleRequest.model_fields">
+<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">FieldInfo</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'aggregation_func':</span> <span class="pre">FieldInfo(annotation=Union[str,</span> <span class="pre">NoneType],</span> <span class="pre">required=False),</span> <span class="pre">'mode':</span> <span class="pre">FieldInfo(annotation=PutMode,</span> <span class="pre">required=False,</span> <span class="pre">default=&lt;PutMode.APPEND:</span> <span class="pre">'append'&gt;),</span> <span class="pre">'rule':</span> <span class="pre">FieldInfo(annotation=Union[str,</span> <span class="pre">NoneType],</span> <span class="pre">required=False),</span> <span class="pre">'source':</span> <span class="pre">FieldInfo(annotation=str,</span> <span class="pre">required=True),</span> <span class="pre">'source_bucket':</span> <span class="pre">FieldInfo(annotation=Union[str,</span> <span class="pre">NoneType],</span> <span class="pre">required=False),</span> <span class="pre">'sql':</span> <span class="pre">FieldInfo(annotation=Union[str,</span> <span class="pre">NoneType],</span> <span class="pre">required=False),</span> <span class="pre">'target':</span> <span class="pre">FieldInfo(annotation=str,</span> <span class="pre">required=True),</span> <span class="pre">'target_bucket_bucket':</span> <span class="pre">FieldInfo(annotation=Union[str,</span> <span class="pre">NoneType],</span> <span class="pre">required=False),</span> <span class="pre">'time_col':</span> <span class="pre">FieldInfo(annotation=Union[str,</span> <span class="pre">NoneType],</span> <span class="pre">required=False)}</span></em><a class="headerlink" href="#shoots_client.ResampleRequest.model_fields" title="Link to this definition">¶</a></dt>
+<dd><p>Metadata about the fields defined on the model,
+mapping of field names to [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo].</p>
+<p>This replaces <cite>Model.__fields__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="shoots_client.ShootsClient">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">shoots_client.</span></span><span class="sig-name descname"><span class="pre">ShootsClient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">host</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_cert</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.ShootsClient" title="Link to this definition">¶</a></dt>
+<dd><p>Client class for interacting with a ShootsServer instance.</p>
+<dl class="simple">
+<dt>Methods:</dt><dd><p>__init__: Constructor for creating a ShootsClient instance.
+put: Sends a PUT request to the server.
+get: Sends a GET request to the server and retrieves data.
+buckets: Retrieves a list of all buckets from the server.
+delete_bucket: Deletes a specified bucket from the server.
+list: Lists dataframes from the server.
+shutdown: Requests the server to shutdown.
+delete: Sends a request to the server to delete a dataframe.
+_flight_result_to_list: Internal method to convert Flight result to list.
+_flight_result_to_string: Internal method to convert Flight result to string.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_client.ShootsClient.buckets">
+<span class="sig-name descname"><span class="pre">buckets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.ShootsClient.buckets" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieves a list of all available buckets from the server.</p>
+<p>Buckets are logical groupings or directories in which
+dataframes are stored on the server. The method returns a list of bucket names.</p>
+<dl>
+<dt>Returns:</dt><dd><p>list: A list of strings, each representing a bucket name.</p>
+</dd>
+<dt>Example:</dt><dd><p>To get a list of all buckets from the server, use the following:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">client</span> <span class="pre">=</span> <span class="pre">ShootsClient(&quot;localhost&quot;,</span> <span class="pre">8080)</span>
+<span class="pre">bucket_list</span> <span class="pre">=</span> <span class="pre">client.buckets()</span>
+<span class="pre">print(bucket_list)</span>
+<span class="pre">`</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_client.ShootsClient.delete">
+<span class="sig-name descname"><span class="pre">delete</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bucket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.ShootsClient.delete" title="Link to this definition">¶</a></dt>
+<dd><p>Sends a request to the server to delete a specific dataframe, optionally within a 
+specified bucket.</p>
+<dl>
+<dt>Args:</dt><dd><p>name (str): The name of the dataframe to be deleted.
+bucket (Optional[str]): The name of the bucket containing the dataframe. If None,</p>
+<blockquote>
+<div><p>the default bucket or a server-defined location is used.</p>
+</div></blockquote>
+</dd>
+<dt>Returns:</dt><dd><p>str: A message indicating the result of the delete operation.</p>
+</dd>
+<dt>Raises:</dt><dd><p>FlightServerError: If the server encounters an error processing the delete request.</p>
+</dd>
+<dt>Example:</dt><dd><p>To delete a dataframe named 'my_dataframe' from the server, use the following:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">client</span> <span class="pre">=</span> <span class="pre">ShootsClient(&quot;localhost&quot;,</span> <span class="pre">8081)</span>
+<span class="pre">delete_result</span> <span class="pre">=</span> <span class="pre">client.delete(name=&quot;my_dataframe&quot;,</span> <span class="pre">bucket=&quot;my_bucket&quot;)</span>
+<span class="pre">print(delete_result)</span>
+<span class="pre">`</span></code></p>
+</dd>
+<dt>Note:</dt><dd><p>Be cautious when using this method as deleting a dataframe is irreversible. Ensure 
+that the dataframe is correctly specified.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_client.ShootsClient.delete_bucket">
+<span class="sig-name descname"><span class="pre">delete_bucket</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#shoots_client.BucketDeleteMode" title="shoots_client.BucketDeleteMode"><span class="pre">BucketDeleteMode</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">BucketDeleteMode.ERROR</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.ShootsClient.delete_bucket" title="Link to this definition">¶</a></dt>
+<dd><p>Sends a request to the server to delete a specified bucket.</p>
+<p>The deletion can be performed in different modes: either deleting the bucket and its
+contents, or raising an error if the bucket is not empty, based on the specified mode.</p>
+<dl>
+<dt>Args:</dt><dd><p>name (str): The name of the bucket to be deleted.
+mode (BucketDeleteMode): The mode of deletion. Default is ERROR, which raises an</p>
+<blockquote>
+<div><p>error if the bucket is not empty. DELETE_CONTENTS mode 
+deletes the bucket and its contents.</p>
+</div></blockquote>
+</dd>
+<dt>Returns:</dt><dd><p>str: A message indicating the result of the deletion operation.</p>
+</dd>
+<dt>Raises:</dt><dd><p>FlightServerError: If the server encounters an error processing the deletion request.</p>
+</dd>
+<dt>Example:</dt><dd><p>To delete a bucket named 'my_bucket' and its contents, use the following:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">client</span> <span class="pre">=</span> <span class="pre">ShootsClient(&quot;localhost&quot;,</span> <span class="pre">8080)</span>
+<span class="pre">result_message</span> <span class="pre">=</span> <span class="pre">client.delete_bucket(name=&quot;my_bucket&quot;,</span> <span class="pre">mode=BucketDeleteMode.DELETE_CONTENTS)</span>
+<span class="pre">print(result_message)</span>
+<span class="pre">`</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_client.ShootsClient.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sql</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bucket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.ShootsClient.get" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieves a dataframe from the server based on the specified dataframe name, optional SQL query, and bucket.</p>
+<p>This method requests data from the FlightServer. It can retrieve an entire dataframe
+or a subset of it if an SQL query is provided. The data is returned as a pandas DataFrame.
+If a bucket is specified, it retrieves the data from that particular bucket.</p>
+<dl>
+<dt>Args:</dt><dd><p>name (str): The name of the dataframe to retrieve.
+sql (Optional[str]): An optional SQL query string to filter the dataframe. If None,</p>
+<blockquote>
+<div><p>the entire dataframe is retrieved.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>bucket (Optional[str]): The name of the bucket where the dataframe is stored. If None, </dt><dd><p>a default bucket is assumed.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><p>pd.DataFrame: A DataFrame containing the retrieved data.</p>
+</dd>
+<dt>Raises:</dt><dd><dl class="simple">
+<dt>ValidationError: If the provided arguments are not valid or if the request </dt><dd><p>cannot be processed by the server.</p>
+</dd>
+</dl>
+<p>FlightServerError: An error is encountered on the server, such as the specified dataframe cannot be found.</p>
+</dd>
+<dt>Example:</dt><dd><p>To retrieve a dataframe named 'my_dataframe' from the server, and filter it using an 
+SQL query, use the following:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">client</span> <span class="pre">=</span> <span class="pre">ShootsClient(&quot;localhost&quot;,</span> <span class="pre">8080)</span>
+<span class="pre">df</span> <span class="pre">=</span> <span class="pre">client.get(name=&quot;my_dataframe&quot;,</span> <span class="pre">sql=&quot;SELECT</span> <span class="pre">*</span> <span class="pre">FROM</span> <span class="pre">my_dataframe</span> <span class="pre">WHERE</span> <span class="pre">condition&quot;,</span> <span class="pre">bucket=&quot;my_bucket&quot;)</span>
+<span class="pre">`</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_client.ShootsClient.list">
+<span class="sig-name descname"><span class="pre">list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bucket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regex</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.ShootsClient.list" title="Link to this definition">¶</a></dt>
+<dd><p>Lists dataframes available on the server, optionally filtered by a specific bucket.</p>
+<p>Each dataframe is returned with its name and schema.</p>
+<dl>
+<dt>Args:</dt><dd><p>bucket (Optional[str]): The name of the bucket to filter dataframes. If None, dataframes from the default bucket are listed.
+regex (Optional[str]): Currently ignored.</p>
+</dd>
+<dt>Returns:</dt><dd><p>list[dict]: A list of dictionaries, each containing the 'name' and 'schema' of a dataframe.</p>
+</dd>
+<dt>Example:</dt><dd><p>To list all dataframe in the 'my_bucket' bucket, use the following:</p>
+<p><a href="#id41"><span class="problematic" id="id42">``</span></a><a href="#id43"><span class="problematic" id="id44">`</span></a>python
+client = ShootsClient(&quot;localhost&quot;, 8080)
+dataframes = client.list(bucket=&quot;my_bucket&quot;)
+for dataframe in dataframes:</p>
+<blockquote>
+<div><p>print(dataframe[&quot;name&quot;], dataframe[&quot;schema&quot;])</p>
+</div></blockquote>
+<p><a href="#id45"><span class="problematic" id="id46">``</span></a><a href="#id47"><span class="problematic" id="id48">`</span></a></p>
+</dd>
+<dt>Note:</dt><dd><p>The method returns an empty list if no dataframes match the filtering criteria or if 
+the server does not have any dataframes. The 'schema' in the returned dictionary is 
+an Apache Arrow schema object.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_client.ShootsClient.ping">
+<span class="sig-name descname"><span class="pre">ping</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.ShootsClient.ping" title="Link to this definition">¶</a></dt>
+<dd><p>Sends a 'ping' to th server.</p>
+<p>Useful for testing if the server is alive and the connection is working.</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>str: only &quot;pong&quot; is returned, otherwise the function returns an error</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_client.ShootsClient.put">
+<span class="sig-name descname"><span class="pre">put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataframe</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#shoots_client.PutMode" title="shoots_client.PutMode"><span class="pre">PutMode</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">PutMode.ERROR</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bucket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.ShootsClient.put" title="Link to this definition">¶</a></dt>
+<dd><p>Sends a dataframe to the server to be stored or appended to an existing dataframe.</p>
+<p>This method allows the client to send a pandas DataFrame to the FlightServer. 
+The data can either replace an existing dataframe, be appended to it, or trigger 
+an error if the dataframe already exists, based on the specified mode. The data 
+is sent to a specified bucket, which is a logical grouping or directory on the 
+server.</p>
+<dl>
+<dt>Args:</dt><dd><p>name (str): The name of the datafra e to which the data will be written.
+dataframe (pd.DataFrame): The pandas DataFrame containing the data to be sent.
+mode (PutMode): The mode of operation when writing the data. The default mode</p>
+<blockquote>
+<div><p>is ERROR, which will raise an error if the dataframe already exists. 
+Other modes are REPLACE and APPEND.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>bucket (Optional[str]): The name of the bucket where the dataframe will be stored. </dt><dd><p>If None, a default bucket may be used.</p>
+</dd>
+</dl>
+</dd>
+<dt>Raises:</dt><dd><dl class="simple">
+<dt>ValidationError: If the provided arguments are not valid or if there is a </dt><dd><p>problem with the DataFrame format.</p>
+</dd>
+</dl>
+<p>FlightServerError: If the dataframe already exists and the put mode was set to ERROR.
+FlightServerError: Other problems encountered on the server while trying to write.</p>
+</dd>
+<dt>Example:</dt><dd><p>To send a DataFrame 'df' to the server and store it as 'my_dataframe' in the 
+'my_bucket' bucket, use the following:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">client</span> <span class="pre">=</span> <span class="pre">ShootsClient(&quot;localhost&quot;,</span> <span class="pre">8080)</span>
+<span class="pre">client.put(name=&quot;my_dataframe&quot;,</span> <span class="pre">dataframe=df,</span> <span class="pre">mode=PutMode.REPLACE,</span> <span class="pre">bucket=&quot;my_bucket&quot;)</span>
+<span class="pre">`</span></code></p>
+</dd>
+<dt>Note:</dt><dd><p>If no bucket is specified, the dataframe will be available in the default, unnamed, bucket.</p>
+<p>The first time a put() is called with a bucket name, the bucket will be automatically created.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_client.ShootsClient.resample">
+<span class="sig-name descname"><span class="pre">resample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rule</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aggregation_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sql</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#shoots_client.PutMode" title="shoots_client.PutMode"><span class="pre">PutMode</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">PutMode.APPEND</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_bucket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_bucket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.ShootsClient.resample" title="Link to this definition">¶</a></dt>
+<dd><p>Resamples (a.k.a. downsamples) data on the server. Works with a provided SQL query, or, if the data is time series,
+callers can supply a rule, time column, and aggregation function.</p>
+<p><code class="docutils literal notranslate"><span class="pre">`resample()`</span></code> does not require a round trip of the data from the server, but rather performs
+the operation on the server.</p>
+<dl>
+<dt>Args:</dt><dd><p>source (str): The name of the dataframe to resample
+target (str):  The name of the resampled dataframe
+sql (str): A sql stream for selecting data from the source dataframe
+mode (Optional[PutMode]): Behavior if a target dataframe already exists (defults to APPEND)
+source_bucket (Optional[str]): Bucket containing the source dataframe, if any
+target_bucket (Optional[str]): Bucket for where to store the resampled dataframe, if any</p>
+<p>The following arguments are ignoed if the sql argument is provide, and required if not.
+rule (str): String representation of time delta for windowing (example: 1s)
+time_col (str): The name of the time stamp column to window on
+aggregation_func (str): The name of the function to aggregate (examples: mean, max, count)</p>
+</dd>
+<dt>Raises:</dt><dd><p>FlightServerError</p>
+</dd>
+<dt>Example:</dt><dd><p>Resampling with a SQL query:
+<a href="#id49"><span class="problematic" id="id50">``</span></a><a href="#id51"><span class="problematic" id="id52">`</span></a>python
+self.client.resample(source=&quot;my_source_dataframe&quot;,</p>
+<blockquote>
+<div><p>target=&quot;my_resampled_dataframe&quot;,
+sql=&quot;SELECT * FROM my_source_dataframe LIMIT 10&quot;,
+mode=PutMode.APPEND)</p>
+</div></blockquote>
+<p><a href="#id53"><span class="problematic" id="id54">``</span></a><a href="#id55"><span class="problematic" id="id56">`</span></a></p>
+<p>Resampling time series without a SQL query:            
+<a href="#id57"><span class="problematic" id="id58">``</span></a><a href="#id59"><span class="problematic" id="id60">`</span></a>python
+self.client.resample(source=&quot;my_source_dataframe&quot;,</p>
+<blockquote>
+<div><p>target=&quot;my_resampled_dataframe&quot;,
+rule=&quot;10s&quot;,
+time_col=&quot;timestamp&quot;,
+aggregation_func=&quot;mean&quot;,
+mode=PutMode.APPEND)</p>
+</div></blockquote>
+<p><a href="#id61"><span class="problematic" id="id62">``</span></a><a href="#id63"><span class="problematic" id="id64">`</span></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="shoots_client.ShootsClient.shutdown">
+<span class="sig-name descname"><span class="pre">shutdown</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#shoots_client.ShootsClient.shutdown" title="Link to this definition">¶</a></dt>
+<dd><p>Sends a shutdown request to the server.</p>
+<p>This method is used to send a command to the FlightServer to initiate its shutdown
+procedure. It is useful for programmatically stopping the server from the client side.</p>
+<dl>
+<dt>Returns:</dt><dd><p>flight.Result: The result of the shutdown action, typically a confirmation message.</p>
+</dd>
+<dt>Example:</dt><dd><p>To send a shutdown command to the server, use the following:</p>
+<p><code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">client</span> <span class="pre">=</span> <span class="pre">ShootsClient(&quot;localhost&quot;,</span> <span class="pre">8080)</span>
+<span class="pre">shutdown_result</span> <span class="pre">=</span> <span class="pre">client.shutdown()</span>
+<span class="pre">print(shutdown_result)</span>
+<span class="pre">`</span></code></p>
+</dd>
+<dt>Note:</dt><dd><p>This method should be used with caution as it will stop the server and terminate 
+all ongoing operations.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">shoots</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Rick Spencer.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
