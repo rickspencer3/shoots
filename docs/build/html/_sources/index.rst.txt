@@ -9,6 +9,7 @@ Contents
 .. toctree::
    :maxdepth: 2
 
+   usage
    shoots_client
    shoots_server
 
