@@ -64,7 +64,8 @@ class ShootsServer(flight.FlightServerBase):
             'type':'admin'}
 
             token = jwt.encode(payload, secret, algorithm='HS256')
-            print(f"JWT for server access: {token}")
+            print("Admin JWT:")
+            print(token)
             
     def do_get(self, context, ticket):
         """
