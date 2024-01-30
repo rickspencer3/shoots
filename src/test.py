@@ -10,6 +10,7 @@ import random
 import string
 import unittest
 import sys
+import jwt
 
 use_tls = False
 
@@ -56,6 +57,17 @@ class TestClient(unittest.TestCase):
         cls.server_thread.join()
 
         shutil.rmtree(cls.bucket_dir)  # Clean up the directory
+    
+    def test_jwt(self):
+        location = Location.for_grpc_tcp("localhost", 8084)
+        server = ShootsServer(location,
+                                bucket_dir="buckets1",
+                                certs=None,
+                                secret="secret")
+        
+        token = server.generate_admin_jwt()
+        decoded = jwt.decode(token, "secret", algorithms=["HS256"])
+        self.assertEqual(decoded["type"], "admin")
 
     def test_list_actions(self):
         actions = self.flight_client.list_actions()

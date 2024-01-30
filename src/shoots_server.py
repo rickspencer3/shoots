@@ -19,6 +19,7 @@ class ShootsServer(flight.FlightServerBase):
     Attributes:
         location (pyarrow.flight.Location): The server location.
         bucket_dir (str): Directory path for storing parquet datasets.
+        secret (str): A secret string supplied by the user to encode and decode JWTs.
 
     Note:
         You most likely don't want to use the server directly, except for starting it up. It is easiest to interact with the server via ShootsClient.
