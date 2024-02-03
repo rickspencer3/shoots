@@ -4,8 +4,8 @@ from shoots_client import ShootsClient
 from pyarrow.flight import Location, FlightClient, FlightUnavailableError
 
 class JWTTest(TLSTest):
-    port = 8083
-    bucket_dir = "tls_buckets"
+    port = 8084
+    bucket_dir = "jwt_buckets"
     def _set_up_server(self):
         location = Location.for_grpc_tls("localhost", self.port)
         server = ShootsServer(location,
