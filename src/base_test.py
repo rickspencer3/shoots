@@ -1,51 +1,38 @@
-from shoots_client import ShootsClient
-from shoots_server import ShootsServer
 from shoots_client import PutMode, BucketDeleteMode
 import pandas as pd
 import numpy as np
-from pyarrow.flight import FlightServerError, Location, FlightClient, FlightUnavailableError
+from pyarrow.flight import FlightServerError
 import threading
 import shutil
 import random
 import string
 import unittest
-import sys
-import jwt
 
-use_tls = False
-
-class TestClient(unittest.TestCase):
+class BaseTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
-        super(TestClient, self).__init__(*args, **kwargs)
+        super(BaseTest, self).__init__(*args, **kwargs)
+
+    def _set_up_server(self):
+        pass
+
+    def _set_up_shoots_client(self):
+        pass
+
+    def _set_up_flight_client(self):
+        pass
 
     @classmethod
     def setUpClass(cls):
         cls.port = 8082
         cls.bucket_dir = "unittest_buckets"
-        kwargs = {}
-        url_scheme = ""
-        if use_tls:
-            cls.location = Location.for_grpc_tls("localhost", cls.port)
-            cls.server = ShootsServer(cls.location,
-                                      bucket_dir=cls.bucket_dir,
-                                      certs=(server_cert,server_key))
-            kwargs["tls_root_certs"] = root_cert
-            url_scheme = "grpc+tls://"
-        else: 
-            cls.location = Location.for_grpc_tcp("localhost", cls.port)
-            cls.server = ShootsServer(cls.location, bucket_dir=cls.bucket_dir)
-            url_scheme = "grpc://"
+        cls.server = cls._set_up_server(cls)
 
         cls.server_thread = threading.Thread(target=cls.server.serve)
         cls.server_thread.start()
 
-        cls.shoots_client = ShootsClient("localhost", 
-                                  cls.port, 
-                                  use_tls,
-                                  root_cert)
+        cls.shoots_client = cls._set_up_shoots_client(cls)
+        cls.flight_client = cls._set_up_flight_client(cls)
         
-        url = f"{url_scheme}localhost:{cls.port}"
-        cls.flight_client = FlightClient(url,**kwargs)
         data = {"col1":[0],"col2":["zero"]}
         cls.dataframe0 = pd.DataFrame(data)
         data = {"col1":[1],"col2":["one"]}
@@ -58,26 +45,9 @@ class TestClient(unittest.TestCase):
 
         shutil.rmtree(cls.bucket_dir)  # Clean up the directory
     
-    def test_jwt(self):
-        location = Location.for_grpc_tcp("localhost", 8084)
-        server = ShootsServer(location,
-                                bucket_dir="buckets1",
-                                certs=None,
-                                secret="secret")
-        
-        token = server.generate_admin_jwt()
-        decoded = jwt.decode(token, "secret", algorithms=["HS256"])
-        self.assertEqual(decoded["type"], "admin")
-
     def test_list_actions(self):
         actions = self.flight_client.list_actions()
         self.assertGreaterEqual(len(actions), 3)
-
-    def test_fail_if_no_tls(self):
-        if use_tls:
-            with self.assertRaises(FlightUnavailableError):
-                client_no_tls = ShootsClient("localhost", self.port, False)
-                client_no_tls.put("should_error", self.dataframe0)
 
     def test_write_replace_mode(self):
         self.shoots_client.put("test1",self.dataframe0,mode=PutMode.REPLACE)    
@@ -391,30 +361,3 @@ lZNEMvLlQ/j48ORH46+4lutnDTdTGIiyHroaq2XFHqNay4jfrl7FZwwlJ18jfj+J
 3FosYGMK6Jm+Zqrg4fK8yeu8ozGOhII=
 -----END CERTIFICATE-----"""
 
-if __name__ == '__main__':
-    no_tls = False
-    tls_only = False
-
-    if "--no-tls" in sys.argv:
-        no_tls = True
-        sys.argv.remove("--no-tls")
-    
-    if "--tls-only" in sys.argv:
-        tls_only = True
-        sys.argv.remove("--tls-only")
-    
-    if no_tls:
-        use_tls = False
-        unittest.main()
-
-    elif tls_only:
-        use_tls = True
-        unittest.main()
-    else:
-        use_tls = False
-        unittest.main(exit=False)
-
-        use_tls = True
-        unittest.main()
-
-    

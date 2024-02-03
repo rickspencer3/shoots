@@ -546,6 +546,10 @@ class ShootsServer(flight.FlightServerBase):
         print("\nShutting down Shoots server")
         return self._list_to_flight_result(["shutdown command received"])
 
+    def _self_decode_jwt(self, token):
+        decoded_token = jwt.decode(token, "secret", algorithms=["HS256"])
+        return decoded_token
+
     def serve(self):
         """
         Serve until shutdown is called.
@@ -561,6 +565,7 @@ def _read_cert_files(cert_file, key_file):
     with open(key_file, 'r') as key_file_content:
         key_data = key_file_content.read()
     return(cert_data, key_data)
+
 
 
 if __name__ == "__main__":
