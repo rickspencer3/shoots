@@ -8,9 +8,17 @@ import shutil
 import threading
 import argparse
 import jwt
+from jwt.exceptions import InvalidTokenError
+import functools
 import datetime
 
 put_modes = ["error", "append", "replace"]
+
+def auth_check(f):
+    @functools.wraps(f)
+    def decorated_function(*args, **kwargs):
+        return f(*args, **kwargs)
+    return decorated_function
 
 class ShootsServer(flight.FlightServerBase):
     """
@@ -143,6 +151,7 @@ class ShootsServer(flight.FlightServerBase):
         table = result.to_arrow_table()
         return table
     
+    @auth_check
     def do_put(self, context, descriptor, reader, writer):
         """
         Handles uploading or appending data to a dataframe.
@@ -558,6 +567,8 @@ class ShootsServer(flight.FlightServerBase):
         print(f"Starting Shoots server on {self.location.uri.decode()}")
         
         super(ShootsServer, self).serve()
+
+
 
 def _read_cert_files(cert_file, key_file):
     with open(cert_file, 'r') as cert_file_content:
