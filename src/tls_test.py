@@ -10,17 +10,17 @@ class TLSTest(BaseTest):
         location = Location.for_grpc_tls("localhost", self.port)
         return ShootsServer(location,
                             bucket_dir=self.bucket_dir,
-                            certs=(server_cert,server_key))
+                            certs=(self.server_cert,self.server_key))
     
     def _set_up_shoots_client(self):
         return ShootsClient("localhost", 
                             self.port, 
                             True,
-                            root_cert)
+                            self.root_cert)
 
     def _set_up_flight_client(self):
         url = f"grpc+tls://localhost:{self.port}"
-        kwargs = {"tls_root_certs":root_cert}
+        kwargs = {"tls_root_certs":self.root_cert}
         return FlightClient(url, **kwargs)
 
     def test_fail_if_no_tls(self):
@@ -28,7 +28,7 @@ class TLSTest(BaseTest):
             client_no_tls = ShootsClient("localhost", self.port, False)
             client_no_tls.put("should_error", self.dataframe0)
 
-server_cert = """-----BEGIN CERTIFICATE-----
+    server_cert = """-----BEGIN CERTIFICATE-----
 MIIDrDCCApSgAwIBAgIUD+l0waPPxuBtzvr6Rw221CugWIwwDQYJKoZIhvcNAQEL
 BQAwYDELMAkGA1UEBhMCdXMxCzAJBgNVBAgMAm1kMRIwEAYDVQQHDAlyb2Nrdmls
 bGUxDTALBgNVBAoMBHNlbGYxDTALBgNVBAsMBHNlbGYxEjAQBgNVBAMMCWxvY2Fs
@@ -51,7 +51,7 @@ gOtqomX0d7LCb0fSTsBoXbINexYGt3mUemiaC59J7jpJHjARPTCY4N5BdPeYWfyI
 3+RZlIfHY2N/WCrxVZ5hnJnynYhOQU637mhR9MOg3RI=
 -----END CERTIFICATE-----"""
 
-server_key = """-----BEGIN PRIVATE KEY-----
+    server_key = """-----BEGIN PRIVATE KEY-----
 MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC2zmFFr73t+Lob
 9TAbVB+D14PyugObA0KOLI5Ta1KZKNBjJ3In5yCbP4BipggzQIi77wjoRnzVwT0V
 VCqmCqh2wxpdG6snsqcjXbXDMfrf2e4ojoo2DY4mmk7XQWGJEU89Uoj+ha7+Nz+r
@@ -80,7 +80,7 @@ AlQB2BliRZIVqE5J8ZhGA1VSSHDQcVnSEoaL6VSdKhuNvUMoJbDAIOc5/6AxDg5c
 W6wn/4QNjcFCLK7IxkU+mi0=
 -----END PRIVATE KEY-----"""
 
-root_cert = """-----BEGIN CERTIFICATE-----
+    root_cert = """-----BEGIN CERTIFICATE-----
 MIIDozCCAougAwIBAgIUEz+VqfyowWmoV3qCaOpMmPSaV1IwDQYJKoZIhvcNAQEL
 BQAwYDELMAkGA1UEBhMCdXMxCzAJBgNVBAgMAm1kMRIwEAYDVQQHDAlyb2Nrdmls
 bGUxDTALBgNVBAoMBHNlbGYxDTALBgNVBAsMBHNlbGYxEjAQBgNVBAMMCWxvY2Fs
