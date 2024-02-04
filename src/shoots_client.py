@@ -6,6 +6,7 @@ from pyarrow.flight import FlightDescriptor, FlightClient, Ticket, Action, Fligh
 import pandas as pd
 import json
 from enum import Enum
+from jwt_client_auth_handler import JWTClientAuthHandler
 
 class PutMode(Enum):
     """
@@ -222,12 +223,11 @@ class ShootsClient:
 
             url = f"{url_scheme}{config.host}:{config.port}"
             self.client = FlightClient(url, **kwargs)
-
             if token:
-                auth_header = [("authorization", f"Bearer {token}")]
-                self.call_options = FlightCallOptions(headers=auth_header)
-            else:
-                self.call_options = FlightCallOptions()
+                auth_handler = JWTClientAuthHandler(token=token)
+                self.client.authenticate(auth_handler)
+
+
         except ValidationError as e:
             print(f"Configuration error: {e}")
             raise
@@ -286,7 +286,7 @@ class ShootsClient:
             descriptor = FlightDescriptor.for_command(command_info)
             table = pa.Table.from_pandas(req.dataframe)
 
-            writer, _ = self.client.do_put(descriptor, table.schema, self.call_options)
+            writer, _ = self.client.do_put(descriptor, table.schema)
             writer.write_table(table)
             writer.close()
 
@@ -333,7 +333,7 @@ class ShootsClient:
 
             ticket_bytes = json.dumps(ticket_info)
             ticket = Ticket(ticket_bytes)
-            reader = self.client.do_get(ticket, options=self.call_options)
+            reader = self.client.do_get(ticket)
             return reader.read_all().to_pandas()
         
         except ValidationError as e:
@@ -361,7 +361,7 @@ class ShootsClient:
         action_info = {}
         bytes = json.dumps(action_info).encode()
         action = Action("buckets",bytes)
-        result = self.client.do_action(action, options=self.call_options)
+        result = self.client.do_action(action)
         return self._flight_result_to_list(result)
     
     def delete_bucket(self, name: str, mode: BucketDeleteMode = BucketDeleteMode.ERROR):
@@ -396,7 +396,7 @@ class ShootsClient:
         action_info = {"name":req.name, "mode":req.mode.value}
         aciton_bytes = json.dumps(action_info).encode()
         action = Action("delete_bucket",aciton_bytes)
-        result = self.client.do_action(action, options=self.call_options)
+        result = self.client.do_action(action)
         return self._flight_result_to_string(result)       
 
     def list(self, bucket: Optional[str] = None, regex: Optional[str] = None):
@@ -429,8 +429,7 @@ class ShootsClient:
         """
         descriptor_info = {"bucket":bucket, "regex":regex}
         descriptor_bytes = json.dumps(descriptor_info).encode()
-        flights = self.client.list_flights(criteria=descriptor_bytes,
-                                           options=self.call_options)
+        flights = self.client.list_flights(criteria=descriptor_bytes)
         dataframes = []
         for flight in flights:
             dataframes.append({"name":flight.descriptor.path[0].decode(), "schema":flight.schema})
@@ -461,7 +460,7 @@ class ShootsClient:
         """
         action_bytes = json.dumps({}).encode()
         action = Action("shutdown",action_bytes)
-        result = self.client.do_action(action, options=self.call_options)
+        result = self.client.do_action(action)
         return self._flight_result_to_string(result)
 
     def delete(self, name: str, bucket: Optional[str] = None):
@@ -495,7 +494,7 @@ class ShootsClient:
         """
         action_bytes = json.dumps({"name":name, "bucket":bucket}).encode()
         action = Action("delete",action_bytes)
-        result = self.client.do_action(action, options=self.call_options)
+        result = self.client.do_action(action)
 
         return self._flight_result_to_string(result)
     
@@ -580,7 +579,7 @@ class ShootsClient:
         
         action_bytes = json.dumps(resample_info).encode()
         action = Action("resample",action_bytes)
-        result = self.client.do_action(action, options=self.call_options)
+        result = self.client.do_action(action)
         return json.loads(self._flight_result_to_string(result))
       
     def ping(self):
@@ -594,7 +593,7 @@ class ShootsClient:
         """
 
         action = Action("ping", b'')
-        result = self.client.do_action(action, options=self.call_options)
+        result = self.client.do_action(action)
         return self._flight_result_to_string(result)
     
     def _flight_result_to_list(self, result):
