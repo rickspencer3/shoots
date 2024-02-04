@@ -227,7 +227,6 @@ class ShootsClient:
                 auth_handler = JWTClientAuthHandler(token=token)
                 self.client.authenticate(auth_handler)
 
-
         except ValidationError as e:
             print(f"Configuration error: {e}")
             raise

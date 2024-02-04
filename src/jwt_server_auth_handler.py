@@ -8,10 +8,11 @@ class JWTServerAuthHandler(ServerAuthHandler):
 
     def authenticate(self, outgoing, incoming):
         token = incoming.read()
+        
         try:
             permissions = jwt.decode(token, self.secret , algorithms=["HS256"])
-            if permissions["type"] != 'admin':
-                raise FlightUnauthenticatedError()
+            if permissions.get("type") != 'admin':
+                raise FlightUnauthenticatedError("token has incorrect permissions")
         except Exception as e:
             raise e
 
