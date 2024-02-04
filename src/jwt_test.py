@@ -19,7 +19,8 @@ class JWTTest(TLSTest):
         return ShootsClient("localhost", 
                             self.port, 
                             True,
-                            self.root_cert)
+                            self.root_cert,
+                            token=self.token)
 
     def _set_up_flight_client(self):
         url = f"grpc+tls://localhost:{self.port}"
