@@ -54,7 +54,7 @@ class ShootsServer(flight.FlightServerBase):
         if self.secret:
             print("Generating admin JWT:")
             print(self.generate_admin_jwt())
-            auth_handler = JWTServerAuthHandler()
+            auth_handler = JWTServerAuthHandler(self.secret)
 
         # set up TLS is specified
         if certs == None:
