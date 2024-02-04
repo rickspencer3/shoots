@@ -39,6 +39,16 @@ class JWTTest(TLSTest):
         
             bad_client.ping()
 
+    def test_no_token(self):
+        with self.assertRaises(Exception):
+            bad_client = ShootsClient("localhost", 
+                                self.port, 
+                                True,
+                                self.root_cert)
+        
+            bad_client.ping()
+
+
     def test_incorrect_permissions_type(self):
             payload = {
             'exp': datetime.datetime.utcnow() + datetime.timedelta(days=365),
