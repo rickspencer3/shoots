@@ -8,17 +8,11 @@ import shutil
 import threading
 import argparse
 import jwt
-from jwt.exceptions import InvalidTokenError
 import functools
 import datetime
+from jwt_server_auth_handler import JWTServerAuthHandler
 
 put_modes = ["error", "append", "replace"]
-
-def auth_check(f):
-    @functools.wraps(f)
-    def decorated_function(*args, **kwargs):
-        return f(*args, **kwargs)
-    return decorated_function
 
 class ShootsServer(flight.FlightServerBase):
     """
@@ -51,23 +45,25 @@ class ShootsServer(flight.FlightServerBase):
         self.location = location
         self.bucket_dir = bucket_dir
         self.secret = secret
-
+        
         # set up the bucket directory
         os.makedirs(self.bucket_dir, exist_ok=True)
+        auth_handler = None
 
         #print admin token
         if self.secret:
             print("Generating admin JWT:")
             print(self.generate_admin_jwt())
+            auth_handler = JWTServerAuthHandler()
 
         # set up TLS is specified
         if certs == None:
             super(ShootsServer, self).__init__(location, *args, **kwargs)
         else:
             super(ShootsServer, self).__init__(location,
-                                    None, # auth_handler
-                                    [certs],
-                                    False, # verify_client
+                                    auth_handler = auth_handler,
+                                    tls_certificates = [certs],
+                                    verify_client = False, # verify_client
                                     *args, **kwargs)
     
     def generate_admin_jwt(self):
@@ -151,7 +147,6 @@ class ShootsServer(flight.FlightServerBase):
         table = result.to_arrow_table()
         return table
     
-    @auth_check
     def do_put(self, context, descriptor, reader, writer):
         """
         Handles uploading or appending data to a dataframe.
