@@ -7,6 +7,10 @@ import json
 import shutil
 import threading
 import argparse
+import jwt
+import functools
+import datetime
+from jwt_server_auth_handler import JWTServerAuthHandler, JWTMiddleware
 
 put_modes = ["error", "append", "replace"]
 
@@ -17,6 +21,7 @@ class ShootsServer(flight.FlightServerBase):
     Attributes:
         location (pyarrow.flight.Location): The server location.
         bucket_dir (str): Directory path for storing parquet datasets.
+        secret (str): A secret string supplied by the user to encode and decode JWTs.
 
     Note:
         You most likely don't want to use the server directly, except for starting it up. It is easiest to interact with the server via ShootsClient.
@@ -26,6 +31,7 @@ class ShootsServer(flight.FlightServerBase):
                  location,
                  bucket_dir,
                  certs = None,
+                 secret = None,
                  *args, **kwargs):
         """
         Initializes the ShootsServer.
@@ -38,16 +44,44 @@ class ShootsServer(flight.FlightServerBase):
         """
         self.location = location
         self.bucket_dir = bucket_dir
+        self.secret = secret
+        
+        # set up the bucket directory
         os.makedirs(self.bucket_dir, exist_ok=True)
+        auth_handler = None
+
+        #print admin token
+        if self.secret:
+            print("Generating admin JWT:")
+            print(self.generate_admin_jwt())
+            auth_handler = JWTServerAuthHandler(self.secret)
+
+        # set up TLS is specified
         if certs == None:
             super(ShootsServer, self).__init__(location, *args, **kwargs)
         else:
+            middleware = {}
+            if secret is not None:
+                middleware["jwt"] = JWTMiddleware()
             super(ShootsServer, self).__init__(location,
-                                    None, # auth_handler
-                                    [certs],
-                                    False, # verify_client
-                                    *args, **kwargs)
-            
+                                   auth_handler=auth_handler,
+                                   tls_certificates=[certs],
+                                   verify_client=False,
+                                   middleware=middleware,
+                                   *args, **kwargs)
+
+    def generate_admin_jwt(self):
+        if self.secret:
+            payload = {
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=365),
+            'iat': datetime.datetime.utcnow(),
+            'server': self.location.uri.decode(),
+            'type':'admin'}
+
+            return jwt.encode(payload, self.secret, algorithm='HS256')
+        else:
+            raise ValueError("Server must be started with a secret to use JWTs")
+
     def do_get(self, context, ticket):
         """
         Handles the retrieval of a dataframe based on the given ticket.
@@ -520,6 +554,10 @@ class ShootsServer(flight.FlightServerBase):
         print("\nShutting down Shoots server")
         return self._list_to_flight_result(["shutdown command received"])
 
+    def _self_decode_jwt(self, token):
+        decoded_token = jwt.decode(token, "secret", algorithms=["HS256"])
+        return decoded_token
+
     def serve(self):
         """
         Serve until shutdown is called.
@@ -529,12 +567,15 @@ class ShootsServer(flight.FlightServerBase):
         
         super(ShootsServer, self).serve()
 
+
+
 def _read_cert_files(cert_file, key_file):
     with open(cert_file, 'r') as cert_file_content:
         cert_data = cert_file_content.read()
     with open(key_file, 'r') as key_file_content:
         key_data = key_file_content.read()
     return(cert_data, key_data)
+
 
 
 if __name__ == "__main__":
@@ -544,8 +585,9 @@ if __name__ == "__main__":
     parser.add_argument('--port', type=int, default=8081, help='Port number to run the Flight server on.')
     parser.add_argument('--bucket_dir', type=str, default='buckets', help='Path to the bucket directory.')
     parser.add_argument('--host', type=str, default='localhost', help='Host IP address for where the server will run.')
-    parser.add_argument('--cert_file', type=str, default=None, help='Path to file for cert file for TLS')
-    parser.add_argument('--key_file', type=str, default=None, help='Path to file for key file for TLS')
+    parser.add_argument('--cert_file', type=str, default=None, help='Path to file for cert file for TLS.')
+    parser.add_argument('--key_file', type=str, default=None, help='Path to file for key file for TLS.')
+    parser.add_argument('--secret', type=str, default=None, help='A secret key used to generate a JWT required for making calls from a client. If no secret is specified, then no JWT is required.')
 
     args = parser.parse_args()
 
@@ -555,6 +597,7 @@ if __name__ == "__main__":
     args.host = os.getenv('SHOOTS_HOST', args.host)
     args.cert_file = os.getenv('SHOOTS_CERT_FILE', args.cert_file)
     args.key_file = os.getenv('SHOOTS_KEY_FILE', args.key_file)
+    args.secret = os.getenv('SHOOTS_SECRET', args.secret)
 
     if args.cert_file is not None and args.key_file is not None:
         location = flight.Location.for_grpc_tls(args.host, args.port)
@@ -562,10 +605,13 @@ if __name__ == "__main__":
 
         server = ShootsServer(location,
                               bucket_dir=args.bucket_dir,
-                              certs=certs)
+                              certs=certs,
+                              secret=args.secret
+                              )
+        
     elif args.cert_file is None and args.key_file is None:
         location = flight.Location.for_grpc_tcp(args.host, args.port)
-        server = ShootsServer(location, bucket_dir=args.bucket_dir)
+        server = ShootsServer(location, bucket_dir=args.bucket_dir, secret=args.secret)
     else:
         raise ValueError("Both cert_file and key_file must be provided, or neither should be.")
 

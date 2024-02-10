@@ -1,11 +1,12 @@
-from pydantic import BaseModel, ValidationError, validator, root_validator
+from pydantic import BaseModel, ValidationError, validator, model_validator
 from pydantic_settings import BaseSettings
 from typing import Optional
 import pyarrow as pa
-from pyarrow.flight import FlightDescriptor, FlightClient, Ticket, Action, FlightError
+from pyarrow.flight import FlightDescriptor, FlightClient, Ticket, Action, FlightCallOptions
 import pandas as pd
 import json
 from enum import Enum
+from jwt_client_auth_handler import JWTClientAuthHandler
 
 class PutMode(Enum):
     """
@@ -39,6 +40,18 @@ class ClientConfig(BaseSettings):
     host: str
     port: int
     tls: bool
+    root_cert: Optional[str]
+    token: Optional[str]
+    
+    @model_validator(mode='before')
+    def check_tls(cls, values):
+        tls, root_cert, token = values.get('tls'), values.get('root_cert'), values.get('token')
+        if root_cert and not tls:
+            raise ValidationError('Root cert provided without TLS enabled.')
+        if token and not tls:
+            raise ValidationError('Token provided without TLS enabled. For security reasons, TLS must be enabled when a token is used.')
+        
+        return values
 
 class DeleteRequest(BaseModel):
     """
@@ -98,7 +111,7 @@ class ResampleRequest(BaseModel):
     target_bucket_bucket: Optional[str] = None
     sql: Optional[str] = None
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
     def check_sql_and_fields(cls, values):
         sql = values.get('sql')
         rule = values.get('rule')
@@ -149,7 +162,8 @@ class ShootsClient:
                  host: str, 
                  port: int, 
                  tls: Optional[bool] = False,
-                 root_cert: Optional[str] = None):
+                 root_cert: Optional[str] = None,
+                 token: Optional[str] = None):
         """
         Initializes the ShootsClient with the specified host and port.
 
@@ -167,11 +181,11 @@ class ShootsClient:
             port (int): The port number on which the FlightServer is listening.
             tls (bool): Whether or not the server to connect to uses TLS.
             root_cert (string): A root certificate used by the server for tls signing if the server is using self-signed tls.
-
+            token (string): A JWT to provide to the server. Requires TLS to be True.
         Raises:
-            ValidationError: If the provided host or port values are not valid 
-                            or if the FlightClient cannot be configured with 
-                            the given host and port.
+            ValidationError: Occurs:
+                 - If the provided host or port values are not valid
+                 - A token is provided but tls is False
         
         Example:
             To create a client instance that connects to a FlightServer running
@@ -192,7 +206,12 @@ class ShootsClient:
             ```
         """
         try:
-            config = ClientConfig(host=host, port=port, tls=tls)
+            config = ClientConfig(host=host,
+                                  port=port,
+                                  tls=tls,
+                                  root_cert=root_cert,
+                                  token=token
+                                  )
             kwargs = {}
             if root_cert is not None:
                 kwargs["tls_root_certs"] = root_cert
@@ -204,6 +223,10 @@ class ShootsClient:
 
             url = f"{url_scheme}{config.host}:{config.port}"
             self.client = FlightClient(url, **kwargs)
+            if token:
+                auth_handler = JWTClientAuthHandler(token=token)
+                self.client.authenticate(auth_handler)
+
         except ValidationError as e:
             print(f"Configuration error: {e}")
             raise
@@ -257,6 +280,7 @@ class ShootsClient:
             command_info = json.dumps({"name": req.name,
                                  "mode": req.mode.value,
                                  "bucket":bucket}).encode()
+            
             
             descriptor = FlightDescriptor.for_command(command_info)
             table = pa.Table.from_pandas(req.dataframe)
