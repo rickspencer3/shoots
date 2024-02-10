@@ -145,18 +145,6 @@ class GetRequest(BaseModel):
 class ShootsClient:
     """
     Client class for interacting with a ShootsServer instance.
-
-    Methods:
-        __init__: Constructor for creating a ShootsClient instance.
-        put: Sends a PUT request to the server.
-        get: Sends a GET request to the server and retrieves data.
-        buckets: Retrieves a list of all buckets from the server.
-        delete_bucket: Deletes a specified bucket from the server.
-        list: Lists dataframes from the server.
-        shutdown: Requests the server to shutdown.
-        delete: Sends a request to the server to delete a dataframe.
-        _flight_result_to_list: Internal method to convert Flight result to list.
-        _flight_result_to_string: Internal method to convert Flight result to string.
     """
     def __init__(self, 
                  host: str, 

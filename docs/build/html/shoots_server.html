@@ -35,12 +35,13 @@
 <h1>ShootsServer Class<a class="headerlink" href="#shootsserver-class" title="Link to this heading">¶</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="shoots_server.ShootsServer">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">shoots_server.</span></span><span class="sig-name descname"><span class="pre">ShootsServer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">location</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bucket_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">certs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">shoots_server.</span></span><span class="sig-name descname"><span class="pre">ShootsServer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">location</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bucket_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">certs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secret</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">FlightServerBase</span></code></p>
 <p>A FlightServer for managing and serving pandas datasets.</p>
 <dl class="simple">
 <dt>Attributes:</dt><dd><p>location (pyarrow.flight.Location): The server location.
-bucket_dir (str): Directory path for storing parquet datasets.</p>
+bucket_dir (str): Directory path for storing parquet datasets.
+secret (str): A secret string supplied by the user to encode and decode JWTs.</p>
 </dd>
 <dt>Note:</dt><dd><p>You most likely don't want to use the server directly, except for starting it up. It is easiest to interact with the server via ShootsClient.</p>
 </dd>
@@ -185,6 +186,11 @@ writer.close()
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="shoots_server.ShootsServer.generate_admin_jwt">
+<span class="sig-name descname"><span class="pre">generate_admin_jwt</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer.generate_admin_jwt" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="shoots_server.ShootsServer.list_actions">
 <span class="sig-name descname"><span class="pre">list_actions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#shoots_server.ShootsServer.list_actions" title="Link to this definition">¶</a></dt>
 <dd><p>Lists all available actions that the server can perform.</p>
@@ -274,6 +280,7 @@ for r in res:</p>
 
 <h3>Navigation</h3>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide for Shoots</a></li>
 <li class="toctree-l1"><a class="reference internal" href="shoots_client.html">ShootsClient Class</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">ShootsServer Class</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#shoots_server.ShootsServer"><code class="docutils literal notranslate"><span class="pre">ShootsServer</span></code></a></li>

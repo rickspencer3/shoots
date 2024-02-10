@@ -43,12 +43,16 @@ To enable TLS on the server, provide an SSL certificate and key.
  - ```--cert_file```: Path to file for cert file for TLS. Defaults to None. 
  - ```--key_file```: Path to file for key file for TLS. Defaults to None.
 
+To enable JWT-based authentication, provide a secret string:
+- ```--secret```: A secret string use to generate a JWT and authorize clients with that JWT. TLS must be enabled.
+
 These options can also be set via environment variables.
  - ```SHOOTS_PORT```
  - ```SHOOTS_BUCKET_DIR```
  - ```SHOOTS_HOST```
  - ```SHOOTS_CERT_FILE```
  - ```SHOOTS_KEY_FILE```
+ - ```SHOOTS_SECRET```
 
 ### python
 You can also start up the server in Python. It is best to start it on a thread or you won't be able to cleanly shut it down.
@@ -61,6 +65,39 @@ server = ShootsServer(location, bucket_dir="/foo/bar") #bucket_dir is optional
 server_thread = threading.Thread(target=server.run)
 server_thread.start()
 ```
+
+#### Running Securely
+To run the server with TLS enabled start the server with both the a certificate and key.  This is accomplished by passing the strings for the certificate and key as a tuple.
+
+##### Add TLS
+```python
+with open(cert_file, 'r') as cert_file_content:
+    cert_data = cert_file_content.read()
+with open(key_file, 'r') as key_file_content:
+    key_data = key_file_content.read()
+
+server = ShootsServer(location,
+            bucket_dir=self.bucket_dir,
+            certs=(cert_data, key_data))
+server.start()
+```
+Note below that if you are usig a self-signed certificate, you should create the certificate and key with a root certificate that can be shared with the client, so that the client can verify that the it is the actually expected server that is responding.
+
+#### Using a JWT
+The server can require a JWT from the client to authenticate that the client is legit. This requires TLS to be enabled so that the jwt is not passed around in clear text. To enable JWT authantication, supply a secret to the server, generate a JWT, and then the client can use that token to authenticate with the server.
+
+```python
+server = ShootsServer(self.location,
+                    bucket_dir=self.bucket_dir,
+                    certs=(cert_data,key_data),
+                    secret="some_secret_to_generte a token")
+token = server.generate_admin_jwt() # give the token to the client
+server.start()
+```
+Note that a token will be generated and printed to standard out at start up as well.
+
+See below for how to create a client that uses the token.
+
 ## shutting down the server
 ### from the shoots client
 Shoots supports a ```shutdown``` action. You can call it from the shoots client:
@@ -79,11 +116,13 @@ server.shutdown()
 ```
 
 ## creating a client object
+### connect to a server running in insecure mode
 ShootsClient requires a host name and port number:
 ```python
 shoots = ShootsClient("localhost", 8081)
 ```
 
+### connect to a server with TLS enabled
 You can enable tls by setting use TLS to True.
 ```python
 shoots = ShootsClient("localhost", 8081, True)
@@ -97,6 +136,18 @@ with open(path_to_root_cert) as root_cert_file:
     root_cert = root_cert_file.read()
 
 shoots = ShootsClient("localhost", 8081, True, root_cert)
+```
+
+### connect to a server that requires a JWT
+If the server requires token authentication, then assuming you have the token, use it when you create the client object.
+
+```python
+ client = ShootsClient("localhost", 
+                            port, 
+                            True,
+                            root_cert,
+                            token=token)
+client.ping()
 ```
 
 ## storing a dataframe
@@ -217,5 +268,5 @@ I intend to work on the following in the coming weeks, in no particular order:
 - [X] downsampling via sql on the server
 - [ ] combining dataframes on the server
 - [X] compressing and cleaning dataframes on the server
-- [ ] authentication
+- [X] authentication
 - [ ] UI with SQL tree view browser and editor
