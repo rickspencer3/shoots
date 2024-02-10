@@ -6,12 +6,12 @@ I think this how it works:
 1. The ServerMiddleware is provided to the FlightServer. The middleware has functions that get called by the FlightServer
 at specific points in the call process. We only care about validating each call, so we want to check at the start of each call.
 2. The ClientMiddleware is provided to the client, and the client calls authenticate on it for each call.
-3. At the start of each call the ServerMiddle ware start_call() function is called. The client could be instigating a handshake,
-but since the 
-Unless is it a handshake, we make certaint that the client is passing a token. Otherwise, the client could simply
-not provide any middleware, and the server would server wihtout authentication,
+3. At the start of each call the ServerMiddle ware start_call() function is called. The client could be instigating a handshake or making a call.
+If the client is making a Handshake, we can ignore it, because we are using JWT which embeds all of the permissions in the token, not on the server.
+If it's not a handshake, make certaint that the client is passing a token before we let it make the call. Otherwise, the client could simply
+not provide any middleware, and the server would server wihtout authentication. We don't need to authenticate in the middleware, that happens in the auth hanlder.
 4. For each call, the ClientMiddleware calls it's authenticate method, which simply sends the token to the 
-ServerMiddleware's authentication method. If there is a problem decoding the token or if the 
+ServerAuthHandler's authentication method. If there is a problem decoding the token or if the 
 permissions encoded in the token are incorrect, an exception is thrown before the call to the server is made.
 """
 
