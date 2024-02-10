@@ -1,4 +1,4 @@
-from shoots_client import PutMode, BucketDeleteMode
+from shoots import PutMode, BucketDeleteMode
 import pandas as pd
 import numpy as np
 from pyarrow.flight import FlightServerError
