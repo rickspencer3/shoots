@@ -258,6 +258,24 @@ buckets before deletion:
 buckets after deletion:
 ['foo']
 ```
+# Running Tests
+There are tests for checking running in insecure mode (no TLS or JWt), TLS only (no JWT), or JWT(also with TLS). The tests are designed to run without extra dependencies.
+
+To run the tests, navigate to the project directory, add the project directory to your python path, and run the tests (from the project directory):
+
+```bash
+$ export PYTHONPATH="/path/to/shoots:$PYTHONPATH"
+$ python3 tests/run_tests.py   
+```
+
+This will run all 3 test casees in parallel.
+
+To run a single test, you can drop into the tests directory and run the test directly:
+
+```bash
+$ cd tests                                                 
+tests $ python3 -m unittest tls_test.TLSTest 
+```
 
 # Roadmap
 I intend to work on the following in the coming weeks, in no particular order:
