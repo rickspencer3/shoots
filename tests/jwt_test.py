@@ -1,4 +1,4 @@
-from .tls_test import TLSTest
+from tests.tls_test import TLSTest
 from shoots import ShootsServer, ShootsClient, JWTClientAuthHandler
 from pyarrow.flight import Location, FlightClient, FlightServerError, FlightUnauthenticatedError
 import datetime

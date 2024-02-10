@@ -23,8 +23,6 @@ class BaseTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.port = 8082
-        cls.bucket_dir = "unittest_buckets"
         cls.server = cls._set_up_server(cls)
 
         cls.server_thread = threading.Thread(target=cls.server.serve)

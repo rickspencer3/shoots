@@ -1,4 +1,4 @@
-from .base_test import BaseTest
+from base_test import BaseTest
 from shoots import ShootsServer, ShootsClient
 from pyarrow.flight import Location, FlightClient, FlightUnavailableError
 
