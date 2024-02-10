@@ -1,6 +1,7 @@
 *.parquet
 __pycache__/
 shoots/__pycache__
+tests/__pycache__
 shoots/scratch.py
 buckets
 shoots/buckets

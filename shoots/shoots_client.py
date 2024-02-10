@@ -2,7 +2,7 @@ from pydantic import BaseModel, ValidationError, validator, model_validator
 from pydantic_settings import BaseSettings
 from typing import Optional
 import pyarrow as pa
-from pyarrow.flight import FlightDescriptor, FlightClient, Ticket, Action, FlightCallOptions
+from pyarrow.flight import FlightDescriptor, FlightClient, Ticket, Action
 import pandas as pd
 import json
 from enum import Enum
