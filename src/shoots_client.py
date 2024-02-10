@@ -165,16 +165,14 @@ class ShootsClient:
                  root_cert: Optional[str] = None,
                  token: Optional[str] = None):
         """
-        Initializes the ShootsClient with the specified host and port.
+        Initializes the ShootsClient with the specified host, port, credentials, and secrets.
 
         If the ShootsServer is configured to use TLS, set tls to True.
 
         If the ShootsServer SSL certificate is self signed, use the root_cert 
         parameter, passing in the servers root certificate as a string.
 
-        This method creates a new instance of the ShootsClient, setting up the
-        connection to the FlightServer. It configures the client with the provided
-        host and port parameters.
+        If the ShootsServer requires JWT, use the token parameter and provide the token as a string.
 
         Args:
             host (str): The hostname or IP address of the FlightServer.
