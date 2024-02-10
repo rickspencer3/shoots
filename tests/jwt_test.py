@@ -1,10 +1,8 @@
-from tls_test import TLSTest
-from shoots_server import ShootsServer
-from shoots_client import ShootsClient
+from tests.tls_test import TLSTest
+from shoots import ShootsServer, ShootsClient, JWTClientAuthHandler
 from pyarrow.flight import Location, FlightClient, FlightServerError, FlightUnauthenticatedError
 import datetime
 import jwt
-from jwt_client_auth_handler import JWTClientAuthHandler
 
 class JWTTest(TLSTest):
     port = 8084

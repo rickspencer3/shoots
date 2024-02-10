@@ -6,7 +6,7 @@ from pyarrow.flight import FlightDescriptor, FlightClient, Ticket, Action, Fligh
 import pandas as pd
 import json
 from enum import Enum
-from jwt_client_auth_handler import JWTClientAuthHandler
+from .jwt_client_auth_handler import JWTClientAuthHandler
 
 class PutMode(Enum):
     """

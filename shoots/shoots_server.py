@@ -9,7 +9,7 @@ import threading
 import argparse
 import jwt
 import datetime
-from jwt_server_auth import JWTServerAuthHandler, JWTMiddleware
+from .jwt_server_auth import JWTServerAuthHandler, JWTMiddleware
 
 put_modes = ["error", "append", "replace"]
 

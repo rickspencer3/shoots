@@ -1,6 +1,5 @@
 from base_test import BaseTest
-from shoots_server import ShootsServer
-from shoots_client import ShootsClient
+from shoots import ShootsServer, ShootsClient
 from pyarrow.flight import Location, FlightClient
 
 class InsecureTest(BaseTest):
