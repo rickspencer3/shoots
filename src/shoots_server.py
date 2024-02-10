@@ -10,7 +10,7 @@ import argparse
 import jwt
 import functools
 import datetime
-from jwt_server_auth_handler import JWTServerAuthHandler
+from jwt_server_auth_handler import JWTServerAuthHandler, JWTMiddleware
 
 put_modes = ["error", "append", "replace"]
 
@@ -61,11 +61,13 @@ class ShootsServer(flight.FlightServerBase):
             super(ShootsServer, self).__init__(location, *args, **kwargs)
         else:
             super(ShootsServer, self).__init__(location,
-                                    auth_handler = auth_handler,
-                                    tls_certificates = [certs],
-                                    verify_client = False, # verify_client
-                                    *args, **kwargs)
-    
+                                   auth_handler=auth_handler,
+                                   tls_certificates=[certs],
+                                   verify_client=False,
+                                   middleware={
+                                       "jwt": JWTMiddleware()},
+                                   *args, **kwargs)
+
     def generate_admin_jwt(self):
         if self.secret:
             payload = {

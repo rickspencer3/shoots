@@ -4,6 +4,7 @@ from shoots_client import ShootsClient
 from pyarrow.flight import Location, FlightClient, FlightServerError, FlightUnauthenticatedError
 import datetime
 import jwt
+from jwt_client_auth_handler import JWTClientAuthHandler
 
 class JWTTest(TLSTest):
     port = 8084
@@ -27,7 +28,10 @@ class JWTTest(TLSTest):
     def _set_up_flight_client(self):
         url = f"grpc+tls://localhost:{self.port}"
         kwargs = {"tls_root_certs":self.root_cert}
-        return FlightClient(url, **kwargs)
+        client = FlightClient(url, **kwargs)
+        auth_handler = JWTClientAuthHandler(token=self.token)
+        client.authenticate(auth_handler)
+        return client
     
     def test_garbage_token_rejected(self):
         with self.assertRaises(FlightServerError):
@@ -36,7 +40,6 @@ class JWTTest(TLSTest):
                                 True,
                                 self.root_cert,
                                 token="garbage")
-        
             bad_client.ping()
 
     def test_no_token(self):
@@ -45,9 +48,7 @@ class JWTTest(TLSTest):
                                 self.port, 
                                 True,
                                 self.root_cert)
-        
             bad_client.ping()
-
 
     def test_incorrect_permissions_type(self):
             payload = {
