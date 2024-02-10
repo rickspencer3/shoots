@@ -60,12 +60,14 @@ class ShootsServer(flight.FlightServerBase):
         if certs == None:
             super(ShootsServer, self).__init__(location, *args, **kwargs)
         else:
+            middleware = {}
+            if secret is not None:
+                middleware["jwt"] = JWTMiddleware()
             super(ShootsServer, self).__init__(location,
                                    auth_handler=auth_handler,
                                    tls_certificates=[certs],
                                    verify_client=False,
-                                   middleware={
-                                       "jwt": JWTMiddleware()},
+                                   middleware=middleware,
                                    *args, **kwargs)
 
     def generate_admin_jwt(self):
