@@ -9,6 +9,7 @@ import unittest
 class LargeDatasetsTest(unittest.TestCase):
     port = 8085
     bucket_dir = "large_datasets_buckets"
+    dataset_name = "onehundermillion"
     def __init__(self, *args, **kwargs):
         super(LargeDatasetsTest, self).__init__(*args, **kwargs)
 
@@ -20,14 +21,15 @@ class LargeDatasetsTest(unittest.TestCase):
         cls.server_thread.start()
 
         cls.client = ShootsClient("localhost", cls.port)
+
         n_rows = 100_000_000
         n_cols = 10
 
         print("generating large data set")
         small_data = np.random.rand(100, n_cols)
         data = np.tile(small_data, (n_rows // small_data.shape[0], 1))
-        cls.large_df = pd.DataFrame(data, columns=[f'Column_{i}' for i in range(1, n_cols + 1)])
-
+        cls.large_df = pd.DataFrame(data, columns=[f'column_{i}' for i in range(1, n_cols + 1)])
+        print(cls.large_df.head())
         print("writing test data ...")
 
     @classmethod
@@ -39,11 +41,17 @@ class LargeDatasetsTest(unittest.TestCase):
         shutil.rmtree(cls.bucket_dir)
     
     def test_put_get_query_large(self):
-        self.client.put("100Million", dataframe=self.large_df)
-        df = self.client.get("100Million")
+        self.client.put(self.dataset_name, dataframe=self.large_df)
+        print("retrieving all data")
+        df = self.client.get(self.dataset_name)
         records_count = len(df)
-        print(f"retrieved {records_count} records")
+        print(f"Retrieved {records_count} records")
         self.assertEqual(records_count, 100000000)
 
-
+        print("Running sql query")
+        sql = f"SELECT * FROM {self.dataset_name} WHERE column_1 < .2 LIMIT 100"
+        df = self.client.get(self.dataset_name, sql=sql)
+        print("Retrived data:")
+        print(df.head())
+        self.assertEqual(len(df),100)
 
