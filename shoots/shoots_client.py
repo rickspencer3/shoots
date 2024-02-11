@@ -80,6 +80,7 @@ class PutRequest(BaseModel):
     name: str
     mode: PutMode = PutMode.APPEND
     bucket: Optional[str] = None
+    batch_size: Optional[int] = 5000
 
     class Config:
         arbitrary_types_allowed = True
@@ -221,7 +222,8 @@ class ShootsClient:
             name: str, 
             dataframe: pd.DataFrame, 
             mode: PutMode = PutMode.ERROR,
-            bucket: Optional[str] = None):
+            bucket: Optional[str] = None,
+            batch_size: Optional[int] = 5000):
         """
         Sends a dataframe to the server to be stored or appended to an existing dataframe.
 
@@ -239,6 +241,7 @@ class ShootsClient:
                             Other modes are REPLACE and APPEND.
             bucket (Optional[str]): The name of the bucket where the dataframe will be stored. 
                                     If None, a default bucket may be used.
+            batch_size(Optional[int]): The number of rows to write per batch. May be useful for optimizing write performance or memory on the server or client. Default is 5,000 rows.
 
         Raises:
             ValidationError: If the provided arguments are not valid or if there is a 
@@ -261,22 +264,27 @@ class ShootsClient:
             The first time a put() is called with a bucket name, the bucket will be automatically created.
         """
         try:
-            req = PutRequest(dataframe=dataframe, name=name, mode=mode, bucket=bucket)
+            req = PutRequest(dataframe=dataframe, 
+                             name=name, 
+                             mode=mode, 
+                             bucket=bucket, 
+                             batch_size=batch_size)
 
             command_info = json.dumps({"name": req.name,
                                  "mode": req.mode.value,
-                                 "bucket":bucket}).encode()
+                                 "bucket":req.bucket,
+                                 "batch_size":req.batch_size}).encode()
             
             
             descriptor = FlightDescriptor.for_command(command_info)
             table = pa.Table.from_pandas(req.dataframe)
 
             writer, _ = self.client.do_put(descriptor, table.schema)
-            chunk_size = 5000
+            
             row_count = table.num_rows
             with writer:
-                for start_idx in range(0, row_count, chunk_size):
-                    end_idx = min(start_idx + chunk_size, row_count)
+                for start_idx in range(0, row_count, batch_size):
+                    end_idx = min(start_idx + batch_size, row_count)
                     chunk = table.slice(start_idx, end_idx - start_idx)
                     writer.write_table(chunk)
 
