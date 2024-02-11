@@ -277,6 +277,12 @@ $ cd tests
 tests $ python3 -m unittest tls_test.TLSTest 
 ```
 
+There is an additional test for testing large data sets which is, by necessity, slow. As such it is not included in the ```run_tests.py`` program. To run this test:
+
+```bash
+tests $ python3 -m unittest large_datasets_test.LargeDatasetsTest
+```
+
 # Roadmap
 I intend to work on the following in the coming weeks, in no particular order:
 

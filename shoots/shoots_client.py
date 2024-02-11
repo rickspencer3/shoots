@@ -272,8 +272,13 @@ class ShootsClient:
             table = pa.Table.from_pandas(req.dataframe)
 
             writer, _ = self.client.do_put(descriptor, table.schema)
-            writer.write_table(table)
-            writer.close()
+            chunk_size = 5000
+            row_count = table.num_rows
+            with writer:
+                for start_idx in range(0, row_count, chunk_size):
+                    end_idx = min(start_idx + chunk_size, row_count)
+                    chunk = table.slice(start_idx, end_idx - start_idx)
+                    writer.write_table(chunk)
 
         except ValidationError as e:
             print(f"Validation error: {e}")

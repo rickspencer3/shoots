@@ -125,6 +125,7 @@ class ShootsServer(flight.FlightServerBase):
             ```
         """
         try:
+            
             ticket_info = json.loads(ticket.ticket.decode())
             name = ticket_info["name"]
             bucket = ticket_info["bucket"]
@@ -143,13 +144,15 @@ class ShootsServer(flight.FlightServerBase):
             raise flight.FlightServerError(extra_info=str(e))
 
     def _get_arrow_table_from_sql(self, name, file_path, sql_query):
-        ctx = SessionContext()
-        ctx.register_parquet(name, file_path)
-                
-        result = ctx.sql(sql_query)
-        table = result.to_arrow_table()
-        return table
-    
+        try:
+            ctx = SessionContext()
+            ctx.register_parquet(name, file_path)
+            result = ctx.sql(sql_query)
+            table = result.to_arrow_table()
+            return table
+        except Exception as e:
+            print(e)
+        
     def do_put(self, context, descriptor, reader, writer):
         """
         Handles uploading or appending data to a dataframe.
