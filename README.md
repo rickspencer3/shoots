@@ -286,7 +286,7 @@ $ export PYTHONPATH="/path/to/shoots:$PYTHONPATH"
 $ python3 tests/run_tests.py   
 ```
 
-This will run all 3 test casees in parallel.
+This will run all 3 test cases in parallel.
 
 To run a single test, you can drop into the tests directory and run the test directly:
 
