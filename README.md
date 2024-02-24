@@ -283,6 +283,9 @@ There is an additional test for testing large data sets which is, by necessity, 
 tests $ python3 -m unittest large_datasets_test.LargeDatasetsTest
 ```
 
+# License
+This edition of the code is licensed under the MIT license.
+
 # Roadmap
 I intend to work on the following in the coming weeks, in no particular order:
 
