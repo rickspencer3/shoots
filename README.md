@@ -15,6 +15,24 @@ Under the hood, the server receives and serves pandas dataframes, storing thenm 
 The client pieces wrap the [Apache FlightClient](https://arrow.apache.org/docs/python/generated/pyarrow.flight.FlightClient.html) to offer an interface for pandas developers, abstracting away the Apache Arrow and Flight concepts.
 
 # usage
+## installation
+There is a [pypy package](https://pypi.org/project/shoots/) so you can install using pip(3):
+
+```bash
+pip install shoots
+```
+or
+
+```bash
+pip3 install shoots
+```
+
+This will allow you to run the Shoots server directly from the cli along with any command line arguments as documented below:
+
+```bash
+shoots-server
+```
+
 ## starting up the server
 ### terminal
 Running the server is a simple matter of running the python module, depending on your system:
@@ -282,6 +300,9 @@ There is an additional test for testing large data sets which is, by necessity, 
 ```bash
 tests $ python3 -m unittest large_datasets_test.LargeDatasetsTest
 ```
+
+# License
+This edition of the code is licensed under the MIT license.
 
 # Roadmap
 I intend to work on the following in the coming weeks, in no particular order:

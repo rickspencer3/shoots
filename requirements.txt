@@ -1,2 +1,6 @@
 pyarrow
 datafusion
+jwt
+pydantic
+pydantic_settings
+pandas
