@@ -9,3 +9,5 @@ shoots/*.csv
 .vscode/
 certs/
 shoots.egg-info/
+build/
+dist/
