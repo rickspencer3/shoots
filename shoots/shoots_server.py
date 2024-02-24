@@ -9,7 +9,11 @@ import threading
 import argparse
 import jwt
 import datetime
-from .jwt_server_auth import JWTServerAuthHandler, JWTMiddleware
+try:
+    from .jwt_server_auth import JWTServerAuthHandler, JWTMiddleware
+except ImportError:
+    from shoots.jwt_server_auth import JWTServerAuthHandler, JWTMiddleware
+
 
 put_modes = ["error", "append", "replace"]
 
@@ -579,8 +583,7 @@ def _read_cert_files(cert_file, key_file):
     return(cert_data, key_data)
 
 
-
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description='Starts the Shoots Flight Server.')
 
     # Define command line arguments
@@ -618,3 +621,6 @@ if __name__ == "__main__":
         raise ValueError("Both cert_file and key_file must be provided, or neither should be.")
 
     server.serve()
+
+if __name__ == "__main__":
+    main()
