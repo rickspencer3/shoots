@@ -8,3 +8,4 @@ shoots/buckets
 shoots/*.csv
 .vscode/
 certs/
+shoots.egg-info/
