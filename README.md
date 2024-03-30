@@ -16,7 +16,7 @@ The client pieces wrap the [Apache FlightClient](https://arrow.apache.org/docs/p
 
 # usage
 ## installation
-There is a [pypy package](https://pypi.org/project/shoots/) so you can install using pip(3):
+There is a [pypi package](https://pypi.org/project/shoots/) so you can install using pip(3):
 
 ```bash
 pip install shoots
