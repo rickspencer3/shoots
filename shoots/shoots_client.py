@@ -398,8 +398,9 @@ class ShootsClient:
             str: A message indicating the result of the deletion operation.
 
         Raises:
-            FlightServerError: If the server encounters an error processing the deletion request.
-
+            BucketNotEmptyError: The specified bucket is not empty, and the BucketDeleteMode is set to ERROR.
+            FileNotFoundError: The specified bucket cannot be found.    
+        
         Example:
             To delete a bucket named 'my_bucket' and its contents, use the following:
 
@@ -497,6 +498,7 @@ class ShootsClient:
             str: A message indicating the result of the delete operation.
 
         Raises:
+            FileNotFoundError: The specified dataframe does not exist.
             FlightServerError: If the server encounters an error processing the delete request.
 
         Example:
