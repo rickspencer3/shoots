@@ -148,7 +148,7 @@ class DataFusionError(Exception):
     def __init__(self, message):
         super().__init__(message)
 
-class BucketNotEmpty(Exception):
+class BucketNotEmptyError(Exception):
     """Custom exception for delete_bucket."""
     def __init__(self, message):
         super().__init__(message)
@@ -411,9 +411,12 @@ class ShootsClient:
         action_info = {"name":req.name, "mode":req.mode.value}
         aciton_bytes = json.dumps(action_info).encode()
         action = Action("delete_bucket",aciton_bytes)
-        result = self.client.do_action(action)
-        return self._flight_result_to_string(result)       
-
+        try:
+            result = self.client.do_action(action)
+            return self._flight_result_to_string(result)       
+        except FlightServerError as e:
+            raise self._translate_flight_error(e)
+        
     def list(self, bucket: Optional[str] = None, regex: Optional[str] = None):
         """
         Lists dataframes available on the server, optionally filtered by a specific bucket.
@@ -639,7 +642,8 @@ class ShootsClient:
         exception_map = {
             "FileExistsError": FileExistsError,
             "DataFusionError": DataFusionError,
-            "FileNotFoundError": FileNotFoundError
+            "FileNotFoundError": FileNotFoundError,
+            "BucketNotEmptyError":BucketNotEmptyError
         }
 
         if exception_type in exception_map:

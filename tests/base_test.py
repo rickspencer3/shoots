@@ -1,4 +1,4 @@
-from shoots import PutMode, BucketDeleteMode, DataFusionError
+from shoots import PutMode, BucketDeleteMode, DataFusionError, BucketNotEmptyError
 import pandas as pd
 import numpy as np
 from pyarrow.flight import FlightServerError
@@ -102,8 +102,8 @@ class BaseTest(unittest.TestCase):
         self.shoots_client.put("test1",self.dataframe0,mode=PutMode.REPLACE,bucket=bucket)
         buckets = self.shoots_client.buckets()
         self.assertIn(bucket, buckets)
-        with self.assertRaises(FlightServerError):
-            self.shoots_client.delete_bucket("test1", mode=BucketDeleteMode.ERROR)
+        with self.assertRaises(BucketNotEmptyError):
+            self.shoots_client.delete_bucket(bucket, mode=BucketDeleteMode.ERROR)
 
         self.shoots_client.delete_bucket(bucket, mode=BucketDeleteMode.DELETE_CONTENTS)
         buckets = self.shoots_client.buckets()

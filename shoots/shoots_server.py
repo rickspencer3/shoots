@@ -491,8 +491,9 @@ class ShootsServer(flight.FlightServerBase):
         bucket_is_empty = not os.listdir(bucket_path)
         if not bucket_is_empty:
             if mode == "error":
-                raise flight.FlightServerError(f"Bucket Not Empty: {bucket}",
-                                                extra_info="Bucket Not Empty")
+                exception = {"type":"BucketNotEmptyError",
+                             "message":f"Bucket Not Empty: {bucket}"}
+                raise flight.FlightServerError(extra_info=json.dumps(exception))
             elif mode == "delete":
                 shutil.rmtree(bucket_path)
         else: 
