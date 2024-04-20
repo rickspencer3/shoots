@@ -57,7 +57,7 @@ class BaseTest(unittest.TestCase):
         self.shoots_client.delete("test1")
 
     def test_delete_file_not_found(self):
-        with self.assertRaises(FlightServerError):
+        with self.assertRaises(FileNotFoundError):
             self.shoots_client.delete("abcdefghijklmnopqrstuvwxyz")
         
     def test_write_error(self):
@@ -289,4 +289,3 @@ class BaseTest(unittest.TestCase):
         with self.assertRaises(DataFusionError):
             self.shoots_client.get("100x", sql)
         self.shoots_client.delete("100x")        
-
