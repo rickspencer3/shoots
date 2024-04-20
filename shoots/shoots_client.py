@@ -299,14 +299,7 @@ class ShootsClient:
                         chunk = table.slice(start_idx, end_idx - start_idx)
                         writer.write_table(chunk)
             except FlightServerError as e:
-                try:
-                    exception = json.loads(e.extra_info)
-                except json.JSONDecodeError:
-                    raise e
-                if exception["type"] == "FileExistsError":
-                    raise FileExistsError(exception["message"])
-                else:
-                    raise e
+                raise self._translate_flight_error(e)
                 
         except ValidationError as e:
             print(f"Validation error: {e}")
@@ -356,14 +349,7 @@ class ShootsClient:
                 df = reader.read_all().to_pandas()
                 return df
             except FlightServerError as e:
-                try:
-                    exception = json.loads(e.extra_info)
-                except json.JSONDecodeError as e:
-                    raise e
-                if exception["type"] == "DataFusionError":
-                    raise DataFusionError(exception["message"])
-                else:
-                    raise e
+                raise self._translate_flight_error(e)
  
         except ValidationError as e:
             print(f"Validation error: {e}")
@@ -527,14 +513,7 @@ class ShootsClient:
             result = self.client.do_action(action)
             return self._flight_result_to_string(result)
         except FlightServerError as e:
-            try:
-                exception = json.loads(e.extra_info)
-            except json.JSONDecodeError:
-                raise e
-            if exception["type"] == "FileNotFoundError":
-                raise FileNotFoundError(exception["message"])
-            else:
-                raise e
+            raise self._translate_flight_error(e)
     
     def resample(self, 
                 source: str, 
@@ -646,3 +625,24 @@ class ShootsClient:
         
         msg = msg.rstrip("\n")
         return msg
+    
+
+    def _translate_flight_error(self, e):
+        try:
+            exception_info = json.loads(e.extra_info)
+        except json.JSONDecodeError:
+            return e  # Return the original exception if JSON parsing fails
+
+        exception_type = exception_info.get("type")
+        message = exception_info.get("message", "")
+
+        exception_map = {
+            "FileExistsError": FileExistsError,
+            "DataFusionError": DataFusionError,
+            "FileNotFoundError": FileNotFoundError
+        }
+
+        if exception_type in exception_map:
+            return exception_map[exception_type](message)
+        else:
+            return ValueError(f"Unsupported exception type: {exception_type}")
