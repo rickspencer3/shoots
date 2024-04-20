@@ -62,7 +62,7 @@ class BaseTest(unittest.TestCase):
         
     def test_write_error(self):
         self.shoots_client.put("test1",self.dataframe1,mode=PutMode.ERROR)
-        with self.assertRaises(FlightServerError):
+        with self.assertRaises(FileExistsError):
             self.shoots_client.put("test1",self.dataframe1,mode=PutMode.ERROR)
         self.shoots_client.delete("test1")
 
