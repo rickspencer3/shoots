@@ -530,8 +530,10 @@ class ShootsServer(flight.FlightServerBase):
         try:
             os.remove(file_path)
         except FileNotFoundError:
-            raise flight.FlightServerError(f"Dataframe {name} not found",
-                                extra_info="No Such Dataset")
+            exception = {"type":"FileNotFoundError",
+                         "message":f"Dataframe {name} not found"}
+            raise flight.FlightServerError(extra_info=json.dumps(exception))
+        
         except PermissionError:
             raise flight.FlightUnauthorizedError(f"Insufficent permisions to delete {name}")
         except OSError as e:

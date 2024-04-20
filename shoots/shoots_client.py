@@ -148,6 +148,11 @@ class DataFusionError(Exception):
     def __init__(self, message):
         super().__init__(message)
 
+class BucketNotEmpty(Exception):
+    """Custom exception for delete_bucket."""
+    def __init__(self, message):
+        super().__init__(message)
+
 class ShootsClient:
     """
     Client class for interacting with a ShootsServer instance.
@@ -294,9 +299,14 @@ class ShootsClient:
                         chunk = table.slice(start_idx, end_idx - start_idx)
                         writer.write_table(chunk)
             except FlightServerError as e:
-                exception = json.loads(e.extra_info)
+                try:
+                    exception = json.loads(e.extra_info)
+                except json.JSONDecodeError:
+                    raise e
                 if exception["type"] == "FileExistsError":
                     raise FileExistsError(exception["message"])
+                else:
+                    raise e
                 
         except ValidationError as e:
             print(f"Validation error: {e}")
@@ -346,11 +356,15 @@ class ShootsClient:
                 df = reader.read_all().to_pandas()
                 return df
             except FlightServerError as e:
-                exception = json.loads(e.extra_info)
+                try:
+                    exception = json.loads(e.extra_info)
+                except json.JSONDecodeError as e:
+                    raise e
                 if exception["type"] == "DataFusionError":
                     raise DataFusionError(exception["message"])
                 else:
                     raise e
+ 
         except ValidationError as e:
             print(f"Validation error: {e}")
 
@@ -509,9 +523,18 @@ class ShootsClient:
         """
         action_bytes = json.dumps({"name":name, "bucket":bucket}).encode()
         action = Action("delete",action_bytes)
-        result = self.client.do_action(action)
-
-        return self._flight_result_to_string(result)
+        try:
+            result = self.client.do_action(action)
+            return self._flight_result_to_string(result)
+        except FlightServerError as e:
+            try:
+                exception = json.loads(e.extra_info)
+            except json.JSONDecodeError:
+                raise e
+            if exception["type"] == "FileNotFoundError":
+                raise FileNotFoundError(exception["message"])
+            else:
+                raise e
     
     def resample(self, 
                 source: str, 
