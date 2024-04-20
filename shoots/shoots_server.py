@@ -157,7 +157,11 @@ class ShootsServer(flight.FlightServerBase):
             table = result.to_arrow_table()
             return table
         except Exception as e:
-            raise flight.FlightServerError(extra_info=str(e))
+            if "DataFusion error" in str(e):
+                exception = {"type":"DataFusionError", "message":str(e)}
+                raise flight.FlightServerError(extra_info = json.dumps(exception))
+            else:
+                raise e
         
     def do_put(self, context, descriptor, reader, writer):
         """

@@ -1,4 +1,4 @@
-from shoots import PutMode, BucketDeleteMode
+from shoots import PutMode, BucketDeleteMode, DataFusionError
 import pandas as pd
 import numpy as np
 from pyarrow.flight import FlightServerError
@@ -284,14 +284,9 @@ class BaseTest(unittest.TestCase):
         self.assertCountEqual(result,"pong")
     
     def test_bad_sql(self):
-        try:
-            self.shoots_client.put("100x",self.dataframe0,mode=PutMode.REPLACE)    
-            sql = "SELECT * FROM 100x"
-            res = self.shoots_client.get("100x", sql)
-            self.fail("Expected FlightServerError was not raised.")
-        except FlightServerError as e:
-            substring = "ParserError"
-            full_string = e.extra_info.decode()
-            self.assertIn(substring,full_string,"")
-        finally:
-            self.shoots_client.delete("100x")
+        self.shoots_client.put("100x",self.dataframe0,mode=PutMode.REPLACE)    
+        sql = "SELECT * FROM 100x"
+        with self.assertRaises(DataFusionError):
+            self.shoots_client.get("100x", sql)
+        self.shoots_client.delete("100x")        
+

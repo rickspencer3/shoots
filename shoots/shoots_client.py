@@ -143,6 +143,11 @@ class GetRequest(BaseModel):
             raise ValueError('name must be a non-empty string')
         return v
 
+class DataFusionError(Exception):
+    """Custom exception for DataFusion-related errors."""
+    def __init__(self, message):
+        super().__init__(message)
+
 class ShootsClient:
     """
     Client class for interacting with a ShootsServer instance.
@@ -336,10 +341,16 @@ class ShootsClient:
 
             ticket_bytes = json.dumps(ticket_info)
             ticket = Ticket(ticket_bytes)
-            reader = self.client.do_get(ticket)
-            df = reader.read_all().to_pandas()
-            return df
-        
+            try:
+                reader = self.client.do_get(ticket)
+                df = reader.read_all().to_pandas()
+                return df
+            except FlightServerError as e:
+                exception = json.loads(e.extra_info)
+                if exception["type"] == "DataFusionError":
+                    raise DataFusionError(exception["message"])
+                else:
+                    raise e
         except ValidationError as e:
             print(f"Validation error: {e}")
 
