@@ -485,8 +485,9 @@ class ShootsServer(flight.FlightServerBase):
         mode = delete_info["mode"]
         bucket_path = os.path.join(self.bucket_dir, bucket)
         if not os.path.isdir(bucket_path):
-            raise flight.FlightServerError(f"No such bucket: {bucket}",
-                                            extra_info="No Such Bucket")
+            exception = {"type":"FileNotFoundError",
+                "message":f"Bucket {bucket} not found"}
+            raise flight.FlightServerError(extra_info=json.dumps(exception))
         
         bucket_is_empty = not os.listdir(bucket_path)
         if not bucket_is_empty:

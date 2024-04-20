@@ -97,15 +97,35 @@ class BaseTest(unittest.TestCase):
         self.assertEqual(res.shape[0],1)
         self.shoots_client.delete("test1", bucket=bucket)
 
-    def test_list_and_delete_bucket(self):
+    def test_list_and_delete_bucket_with_flags(self):
         bucket = "testing_bucket"
         self.shoots_client.put("test1",self.dataframe0,mode=PutMode.REPLACE,bucket=bucket)
         buckets = self.shoots_client.buckets()
         self.assertIn(bucket, buckets)
+
         with self.assertRaises(BucketNotEmptyError):
             self.shoots_client.delete_bucket(bucket, mode=BucketDeleteMode.ERROR)
-
+        
         self.shoots_client.delete_bucket(bucket, mode=BucketDeleteMode.DELETE_CONTENTS)
+        buckets = self.shoots_client.buckets()
+        self.assertNotIn(bucket, buckets)
+
+    def test_no_such_bucket(self):
+        with self.assertRaises(FileNotFoundError):
+            self.shoots_client.delete_bucket("asfdasfasdfasdfasdf")
+
+    def test_delete_bucket(self):
+        bucket = "testing_bucket"
+        df_name = "test2"
+        self.shoots_client.put(df_name,self.dataframe0,mode=PutMode.REPLACE,bucket=bucket)
+        buckets = self.shoots_client.buckets()
+        self.assertIn(bucket, buckets)
+
+        with self.assertRaises(BucketNotEmptyError):
+            self.shoots_client.delete_bucket(bucket, mode=BucketDeleteMode.ERROR)
+        
+        self.shoots_client.delete(df_name,bucket=bucket)
+        self.shoots_client.delete_bucket(bucket, mode=BucketDeleteMode.ERROR)
         buckets = self.shoots_client.buckets()
         self.assertNotIn(bucket, buckets)
 
