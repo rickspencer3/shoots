@@ -179,6 +179,7 @@ class ShootsClient:
             tls (bool): Whether or not the server to connect to uses TLS.
             root_cert (string): A root certificate used by the server for tls signing if the server is using self-signed tls.
             token (string): A JWT to provide to the server. Requires TLS to be True.
+
         Raises:
             ValidationError: Occurs:
                  - If the provided host or port values are not valid
@@ -256,7 +257,7 @@ class ShootsClient:
         Raises:
             ValidationError: If the provided arguments are not valid or if there is a 
                             problem with the DataFrame format.
-            FlightServerError: If the dataframe already exists and the put mode was set to ERROR.
+            FileExistsError: If the dataframe already exists and the put mode was set to ERROR.
             FlightServerError: Other problems encountered on the server while trying to write.
 
         Example:
@@ -325,7 +326,8 @@ class ShootsClient:
         Raises:
             ValidationError: If the provided arguments are not valid or if the request 
                             cannot be processed by the server.
-            FlightServerError: An error is encountered on the server, such as the specified dataframe cannot be found.
+            DataFusionError: The supplied SQL could not be processed by the server.
+            FileNotFoundError: The specified dataframe cannot be found.
 
         Example:
             To retrieve a dataframe named 'my_dataframe' from the server, and filter it using an 

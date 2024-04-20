@@ -96,6 +96,10 @@ class BaseTest(unittest.TestCase):
         res = self.shoots_client.get("test1",bucket=bucket)
         self.assertEqual(res.shape[0],1)
         self.shoots_client.delete("test1", bucket=bucket)
+    
+    def test_get_no_such_df(self):
+        with self.assertRaises(FileNotFoundError):
+            self.shoots_client.get("asdfasdfasdf")
 
     def test_list_and_delete_bucket_with_flags(self):
         bucket = "testing_bucket"

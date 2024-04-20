@@ -134,6 +134,11 @@ class ShootsServer(flight.FlightServerBase):
             name = ticket_info["name"]
             bucket = ticket_info["bucket"]
             file_path = self._create_file_path(name, bucket)
+            if not os.path.exists(file_path):
+                exception = {"type":"FileNotFoundError",
+                             "message": f"dataframe {name} in bucket {bucket} not found"}
+                raise flight.FlightServerError(extra_info=json.dumps(exception))
+            
             if "sql" in ticket_info:
                 sql_query = ticket_info["sql"]
                 table = self._get_arrow_table_from_sql(name, file_path, sql_query)
