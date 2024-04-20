@@ -2,7 +2,7 @@ from pydantic import BaseModel, ValidationError, validator, model_validator
 from pydantic_settings import BaseSettings
 from typing import Optional
 import pyarrow as pa
-from pyarrow.flight import FlightDescriptor, FlightClient, Ticket, Action
+from pyarrow.flight import FlightDescriptor, FlightClient, Ticket, Action, FlightServerError
 import pandas as pd
 import json
 from enum import Enum
@@ -279,15 +279,20 @@ class ShootsClient:
             descriptor = FlightDescriptor.for_command(command_info)
             table = pa.Table.from_pandas(req.dataframe)
 
-            writer, _ = self.client.do_put(descriptor, table.schema)
-            
-            row_count = table.num_rows
-            with writer:
-                for start_idx in range(0, row_count, batch_size):
-                    end_idx = min(start_idx + batch_size, row_count)
-                    chunk = table.slice(start_idx, end_idx - start_idx)
-                    writer.write_table(chunk)
-
+            try:
+                writer, _ = self.client.do_put(descriptor, table.schema)
+                
+                row_count = table.num_rows
+                with writer:
+                    for start_idx in range(0, row_count, batch_size):
+                        end_idx = min(start_idx + batch_size, row_count)
+                        chunk = table.slice(start_idx, end_idx - start_idx)
+                        writer.write_table(chunk)
+            except FlightServerError as e:
+                exception = json.loads(e.extra_info)
+                if exception["type"] == "FileExistsError":
+                    raise FileExistsError(exception["message"])
+                
         except ValidationError as e:
             print(f"Validation error: {e}")
 
@@ -332,7 +337,8 @@ class ShootsClient:
             ticket_bytes = json.dumps(ticket_info)
             ticket = Ticket(ticket_bytes)
             reader = self.client.do_get(ticket)
-            return reader.read_all().to_pandas()
+            df = reader.read_all().to_pandas()
+            return df
         
         except ValidationError as e:
             print(f"Validation error: {e}")
@@ -548,7 +554,6 @@ class ShootsClient:
                                 aggregation_func="mean",
                                 mode=PutMode.APPEND)
             ```
-
         """
 
         req = ResampleRequest(

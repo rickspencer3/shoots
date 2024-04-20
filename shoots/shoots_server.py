@@ -137,13 +137,15 @@ class ShootsServer(flight.FlightServerBase):
             if "sql" in ticket_info:
                 sql_query = ticket_info["sql"]
                 table = self._get_arrow_table_from_sql(name, file_path, sql_query)
-                
                 return flight.RecordBatchStream(table)
             
             else:
                 table = pq.read_table(file_path)
                 return flight.RecordBatchStream(table)
-            
+
+        except flight.FlightServerError as e:
+            raise e
+
         except Exception as e:
             raise flight.FlightServerError(extra_info=str(e))
 
@@ -155,7 +157,7 @@ class ShootsServer(flight.FlightServerBase):
             table = result.to_arrow_table()
             return table
         except Exception as e:
-            print(e)
+            raise flight.FlightServerError(extra_info=str(e))
         
     def do_put(self, context, descriptor, reader, writer):
         """
@@ -220,7 +222,9 @@ class ShootsServer(flight.FlightServerBase):
                 pq.write_table(data_table, file_path)
             
             elif(mode == "error"):
-                raise flight.FlightServerError(f"File {name} Exists", extra_info="File Exists")
+                exception = {"type":"FileExistsError",
+                             "message":f"Dataframe {name} Exists"}
+                raise flight.FlightServerError(f"File {name} Exists", extra_info=json.dumps(exception))
             else:
                 pq.write_table(data_table, file_path)
         else:
