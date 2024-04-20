@@ -282,3 +282,16 @@ class BaseTest(unittest.TestCase):
     def test_ping(self):
         result = self.shoots_client.ping()
         self.assertCountEqual(result,"pong")
+    
+    def test_bad_sql(self):
+        try:
+            self.shoots_client.put("100x",self.dataframe0,mode=PutMode.REPLACE)    
+            sql = "SELECT * FROM 100x"
+            res = self.shoots_client.get("100x", sql)
+            self.fail("Expected FlightServerError was not raised.")
+        except FlightServerError as e:
+            substring = "ParserError"
+            full_string = e.extra_info.decode()
+            self.assertIn(substring,full_string,"")
+        finally:
+            self.shoots_client.delete("100x")
