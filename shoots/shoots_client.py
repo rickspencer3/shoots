@@ -258,7 +258,7 @@ class ShootsClient:
             ValidationError: If the provided arguments are not valid or if there is a 
                             problem with the DataFrame format.
             FileExistsError: If the dataframe already exists and the put mode was set to ERROR.
-            FlightServerError: Other problems encountered on the server while trying to write.
+            FlightServerError: Unhandled errors encountered on the server while trying to write.
 
         Example:
             To send a DataFrame 'df' to the server and store it as 'my_dataframe' in the 
@@ -327,6 +327,7 @@ class ShootsClient:
                             cannot be processed by the server.
             DataFusionError: The supplied SQL could not be processed by the server.
             FileNotFoundError: The specified dataframe cannot be found.
+            FlightServerError: Unhandled errors arising from the server.
 
         Example:
             To retrieve a dataframe named 'my_dataframe' from the server, and filter it using an 
@@ -364,6 +365,9 @@ class ShootsClient:
 
         Returns:
             list: A list of strings, each representing a bucket name.
+        
+        Raises:
+            FlightServerError: Unhandled errors arising from the server.
 
         Example:
             To get a list of all buckets from the server, use the following:
@@ -441,7 +445,9 @@ class ShootsClient:
             for dataframe in dataframes:
                 print(dataframe["name"], dataframe["schema"])
             ```
-
+        Raises:
+            FileNotFounderror: The specified bucket does not exist on the server.
+            FlightServerError: Unhandled errors arising from the server.
         Note:
             The method returns an empty list if no dataframes match the filtering criteria or if 
             the server does not have any dataframes. The 'schema' in the returned dictionary is 
@@ -502,7 +508,7 @@ class ShootsClient:
 
         Raises:
             FileNotFoundError: The specified dataframe does not exist.
-            FlightServerError: If the server encounters an error processing the delete request.
+            FlightServerError: Unhandled errors arising from the server.
 
         Example:
             To delete a dataframe named 'my_dataframe' from the server, use the following:
@@ -555,9 +561,10 @@ class ShootsClient:
             time_col (str): The name of the time stamp column to window on
             aggregation_func (str): The name of the function to aggregate (examples: mean, max, count)
 
-
         Raises:
-            FlightServerError
+            FlightServerError: Unhandled errors arising from the server.
+            FileNotFoundError: Either the source dataframe or the target bucket do not exist.
+            DataFusionError: The supplied SQL could not be processed.
         
         Example:
             Resampling with a SQL query:
