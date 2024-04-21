@@ -127,6 +127,7 @@ class BaseTest(unittest.TestCase):
 
         with self.assertRaises(BucketNotEmptyError):
             self.shoots_client.delete_bucket(bucket, mode=BucketDeleteMode.ERROR)
+            
         buckets = self.shoots_client.buckets()
         self.assertIn(bucket, buckets)        
 
