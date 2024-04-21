@@ -397,6 +397,10 @@ class ShootsServer(flight.FlightServerBase):
         target_rows = -1
 
         file_path = self._create_file_path(source, source_bucket)
+        if not os.path.exists(file_path):
+            exception = {"type":"FileNotFoundError",
+                "message":f"Dataframe {source} not found"}
+            raise flight.FlightServerError(extra_info=json.dumps(exception))
         table = self._get_arrow_table_from_sql(source, file_path, sql)
         target_rows = table.num_rows
         self._write_arrow_table(target, mode, target_bucket, table)

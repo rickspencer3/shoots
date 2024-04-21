@@ -254,6 +254,12 @@ class BaseTest(unittest.TestCase):
                              rule="10s",
                              time_col="timestamp",
                              aggregation_func="mean")
+        
+        with self.assertRaises(FileNotFoundError):
+            sql = f"SELECT * FROM xxxx LIMIT 10"
+            res = self.shoots_client.resample(source="xxxx",
+                                   target="yyyy",
+                                   sql=sql)
 
     def _generate_dataframe(self, num_rows):
         integers = np.random.randint(0, 100, size=num_rows)  # Random integers between 0 and 99
