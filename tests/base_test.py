@@ -247,6 +247,14 @@ class BaseTest(unittest.TestCase):
         self.shoots_client.delete("million", bucket=source_bucket)
         self.shoots_client.delete("thousand", bucket=target_bucket)
 
+    def test_resample_no_such(self):
+        with self.assertRaises(FileNotFoundError):
+            self.shoots_client.resample(source="xxxxx", 
+                             target="yyyyy",
+                             rule="10s",
+                             time_col="timestamp",
+                             aggregation_func="mean")
+
     def _generate_dataframe(self, num_rows):
         integers = np.random.randint(0, 100, size=num_rows)  # Random integers between 0 and 99
         floats = np.random.random(size=num_rows)  # Random floats
