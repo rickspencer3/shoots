@@ -649,20 +649,15 @@ class ShootsClient:
     def _translate_flight_error(self, e):
         try:
             exception_info = json.loads(e.extra_info)
-        except json.JSONDecodeError:
-            return e  # Return the original exception if JSON parsing fails
+            exception_type = exception_info.get("type")
+            message = exception_info.get("message", "")
 
-        exception_type = exception_info.get("type")
-        message = exception_info.get("message", "")
-
-        exception_map = {
-            "FileExistsError": FileExistsError,
-            "DataFusionError": DataFusionError,
-            "FileNotFoundError": FileNotFoundError,
-            "BucketNotEmptyError":BucketNotEmptyError
-        }
-
-        if exception_type in exception_map:
+            exception_map = {
+                "FileExistsError": FileExistsError,
+                "DataFusionError": DataFusionError,
+                "FileNotFoundError": FileNotFoundError,
+                "BucketNotEmptyError":BucketNotEmptyError
+            }
             return exception_map[exception_type](message)
-        else:
-            return ValueError(f"Unsupported exception type: {exception_type}")
+        except:
+            return e

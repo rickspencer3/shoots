@@ -401,7 +401,7 @@ class ShootsServer(flight.FlightServerBase):
         if action == "ping":
             result = flight.Result(b'pong')
             return [result]
-    
+
     def _resample_with_sql(self, resample_info):
         source = resample_info["source"]
         target = resample_info["target"]
