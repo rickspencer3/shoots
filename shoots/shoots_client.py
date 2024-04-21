@@ -286,7 +286,6 @@ class ShootsClient:
                                  "bucket":req.bucket,
                                  "batch_size":req.batch_size}).encode()
             
-            
             descriptor = FlightDescriptor.for_command(command_info)
             table = pa.Table.from_pandas(req.dataframe)
 
@@ -602,9 +601,11 @@ class ShootsClient:
         
         action_bytes = json.dumps(resample_info).encode()
         action = Action("resample",action_bytes)
-        result = self.client.do_action(action)
-        return json.loads(self._flight_result_to_string(result))
-      
+        try:
+            result = self.client.do_action(action)
+            return json.loads(self._flight_result_to_string(result))
+        except FlightServerError as e:
+            raise self._translate_flight_error(e)
     def ping(self):
         """
         Sends a 'ping' to th server.

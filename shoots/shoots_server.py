@@ -444,7 +444,10 @@ class ShootsServer(flight.FlightServerBase):
 
     def _load_dataframe_from_file(self, source, source_bucket):
         file_name = self._create_file_path(source, source_bucket)
-        
+        if not os.path.exists(file_name):
+            exception = {"type":"FileNotFoundError",
+                "message":f"Dataframe {source} not found"}
+            raise flight.FlightServerError(extra_info=json.dumps(exception))
         table = pq.read_table(file_name)
         df_source = table.to_pandas()
         return df_source
@@ -484,7 +487,7 @@ class ShootsServer(flight.FlightServerBase):
         file_path = os.path.join(bucket_path, file_name)
         
         return file_path
-        
+
     def _delete_bucket(self, delete_info):
         bucket = delete_info["name"]
         mode = delete_info["mode"]
