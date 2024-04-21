@@ -179,7 +179,6 @@ class BaseTest(unittest.TestCase):
 
         self.shoots_client.delete(df_name)
 
-
     def test_resample_no_buckets(self):
         num_rows = 1000000
         df = self._generate_dataframe_with_timestamp(num_rows)
@@ -303,6 +302,10 @@ class BaseTest(unittest.TestCase):
         return df
 
     def test_list_with_bucket(self):
+        with self.assertRaises(FileNotFoundError):
+            self.shoots_client.list(bucket="thereisnobucketnamedthis")
+
+
         self.shoots_client.put("test1",
                         self.dataframe0,
                         mode=PutMode.REPLACE,
@@ -327,7 +330,7 @@ class BaseTest(unittest.TestCase):
             self.shoots_client.delete("test2",
                         bucket="listybucket")
             raise
-        
+
         self.shoots_client.delete("test1",
                         bucket="listybucket")
         self.shoots_client.delete("test2",

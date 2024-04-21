@@ -269,20 +269,38 @@ class ShootsServer(flight.FlightServerBase):
             The regex criteria is not yet implemented on the server.
         """
 
+        
+
         criteria_info = json.loads(criteria.decode())
         bucket = criteria_info["bucket"]
         regex = criteria_info["regex"]
+
+        # gaurd against the bucket not existing
+        if bucket:
+            bucket_dir = os.path.join(self.bucket_dir, bucket)
+            if not os.path.exists(bucket_dir):
+                exception = {"type":"FileNotFoundError",
+                             "message":f"No such bucket {bucket}"}
+                raise flight.FlightServerError(extra_info=json.dumps(exception))
+            
+        # call helper function to get a list of files, bucket may be NONE
         files = self._list_parquet_files(bucket)
+
+        # open each parquet to grab the schema
         for file in files:
+            # set the file_path for each parquet file, in a bucket or not
             file_path = os.path.join(self.bucket_dir, file)
             if bucket:
                 file_path = os.path.join(self.bucket_dir, bucket, file)
+
+            # read in the schame and yield a FlightDestriptor for each parquet file
             parquet_file = pq.ParquetFile(file_path)
             schema = parquet_file.schema.to_arrow_schema()
             descriptor = flight.FlightDescriptor.for_path(file[:-8])
+
             yield flight.FlightInfo(schema,
                             descriptor,
-                            [],  # No endpoints, replace with actual data locations if applicable
+                            [],
                             parquet_file.metadata.num_rows,
                             parquet_file.metadata.serialized_size)
 

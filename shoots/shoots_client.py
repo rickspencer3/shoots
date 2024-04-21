@@ -449,11 +449,15 @@ class ShootsClient:
         """
         descriptor_info = {"bucket":bucket, "regex":regex}
         descriptor_bytes = json.dumps(descriptor_info).encode()
-        flights = self.client.list_flights(criteria=descriptor_bytes)
-        dataframes = []
-        for flight in flights:
-            dataframes.append({"name":flight.descriptor.path[0].decode(), "schema":flight.schema})
-        return dataframes
+        try:
+            flights = self.client.list_flights(criteria=descriptor_bytes)
+
+            dataframes = []
+            for flight in flights:
+                dataframes.append({"name":flight.descriptor.path[0].decode(), "schema":flight.schema})
+            return dataframes
+        except FlightServerError as e:
+            raise self._translate_flight_error(e)
 
     def shutdown(self):
         """
