@@ -1,4 +1,4 @@
-from shoots import PutMode, BucketDeleteMode
+from shoots import PutMode, BucketDeleteMode, DataFusionError, BucketNotEmptyError
 import pandas as pd
 import numpy as np
 from pyarrow.flight import FlightServerError
@@ -57,12 +57,12 @@ class BaseTest(unittest.TestCase):
         self.shoots_client.delete("test1")
 
     def test_delete_file_not_found(self):
-        with self.assertRaises(FlightServerError):
+        with self.assertRaises(FileNotFoundError):
             self.shoots_client.delete("abcdefghijklmnopqrstuvwxyz")
         
     def test_write_error(self):
         self.shoots_client.put("test1",self.dataframe1,mode=PutMode.ERROR)
-        with self.assertRaises(FlightServerError):
+        with self.assertRaises(FileExistsError):
             self.shoots_client.put("test1",self.dataframe1,mode=PutMode.ERROR)
         self.shoots_client.delete("test1")
 
@@ -96,16 +96,44 @@ class BaseTest(unittest.TestCase):
         res = self.shoots_client.get("test1",bucket=bucket)
         self.assertEqual(res.shape[0],1)
         self.shoots_client.delete("test1", bucket=bucket)
+    
+    def test_get_no_such_df(self):
+        with self.assertRaises(FileNotFoundError):
+            self.shoots_client.get("asdfasdfasdf")
 
-    def test_list_and_delete_bucket(self):
+    def test_list_and_delete_bucket_with_flags(self):
+        # set up the bucket, add data, and make sure it is created
         bucket = "testing_bucket"
         self.shoots_client.put("test1",self.dataframe0,mode=PutMode.REPLACE,bucket=bucket)
         buckets = self.shoots_client.buckets()
         self.assertIn(bucket, buckets)
-        with self.assertRaises(FlightServerError):
-            self.shoots_client.delete_bucket("test1", mode=BucketDeleteMode.ERROR)
 
+        # make sure you can't delete the bucket if delete mode is ERROR
+        with self.assertRaises(BucketNotEmptyError):
+            self.shoots_client.delete_bucket(bucket, mode=BucketDeleteMode.ERROR)
+        buckets = self.shoots_client.buckets()
+        self.assertIn(bucket, buckets)
+
+        # make sure you can delete the bucker if delete mode is DELETE_CONTENTS        
         self.shoots_client.delete_bucket(bucket, mode=BucketDeleteMode.DELETE_CONTENTS)
+        buckets = self.shoots_client.buckets()
+        self.assertNotIn(bucket, buckets)
+
+    def test_no_such_bucket(self):
+        with self.assertRaises(FileNotFoundError):
+            self.shoots_client.delete_bucket("asfdasfasdfasdfasdf")
+
+    def test_delete_bucket(self):
+        # set up the bucket, add data, and make sure it is created
+        bucket = "testing_bucket"
+        df_name = "test2"
+        self.shoots_client.put(df_name,self.dataframe0,mode=PutMode.REPLACE,bucket=bucket)
+        buckets = self.shoots_client.buckets()
+        self.assertIn(bucket, buckets)
+
+        # make sure you can delete an empty bucket
+        self.shoots_client.delete(df_name,bucket=bucket)
+        self.shoots_client.delete_bucket(bucket, mode=BucketDeleteMode.ERROR)
         buckets = self.shoots_client.buckets()
         self.assertNotIn(bucket, buckets)
 
@@ -139,6 +167,17 @@ class BaseTest(unittest.TestCase):
         self.assertEqual(df.shape[0], 10)
         self.shoots_client.delete(source)
         self.shoots_client.delete("ten")
+
+    def test_resample_with_bad_sql(self):
+        df_name = "100x"
+        self.shoots_client.put(df_name,self.dataframe0,mode=PutMode.REPLACE)
+        with self.assertRaises(DataFusionError):
+            sql = "select * from 100x"
+            self.shoots_client.resample(source=df_name,
+                                        target="target",
+                                        sql=sql)
+
+        self.shoots_client.delete(df_name)
 
     def test_resample_no_buckets(self):
         num_rows = 1000000
@@ -223,6 +262,20 @@ class BaseTest(unittest.TestCase):
         self.shoots_client.delete("million", bucket=source_bucket)
         self.shoots_client.delete("thousand", bucket=target_bucket)
 
+    def test_resample_no_such(self):
+        with self.assertRaises(FileNotFoundError):
+            self.shoots_client.resample(source="xxxxx", 
+                             target="yyyyy",
+                             rule="10s",
+                             time_col="timestamp",
+                             aggregation_func="mean")
+        
+        with self.assertRaises(FileNotFoundError):
+            sql = f"SELECT * FROM xxxx LIMIT 10"
+            res = self.shoots_client.resample(source="xxxx",
+                                   target="yyyy",
+                                   sql=sql)
+
     def _generate_dataframe(self, num_rows):
         integers = np.random.randint(0, 100, size=num_rows)  # Random integers between 0 and 99
         floats = np.random.random(size=num_rows)  # Random floats
@@ -249,6 +302,10 @@ class BaseTest(unittest.TestCase):
         return df
 
     def test_list_with_bucket(self):
+        with self.assertRaises(FileNotFoundError):
+            self.shoots_client.list(bucket="thereisnobucketnamedthis")
+
+
         self.shoots_client.put("test1",
                         self.dataframe0,
                         mode=PutMode.REPLACE,
@@ -273,7 +330,7 @@ class BaseTest(unittest.TestCase):
             self.shoots_client.delete("test2",
                         bucket="listybucket")
             raise
-        
+
         self.shoots_client.delete("test1",
                         bucket="listybucket")
         self.shoots_client.delete("test2",
@@ -284,14 +341,8 @@ class BaseTest(unittest.TestCase):
         self.assertCountEqual(result,"pong")
     
     def test_bad_sql(self):
-        try:
-            self.shoots_client.put("100x",self.dataframe0,mode=PutMode.REPLACE)    
-            sql = "SELECT * FROM 100x"
-            res = self.shoots_client.get("100x", sql)
-            self.fail("Expected FlightServerError was not raised.")
-        except FlightServerError as e:
-            substring = "ParserError"
-            full_string = e.extra_info.decode()
-            self.assertIn(substring,full_string,"")
-        finally:
-            self.shoots_client.delete("100x")
+        self.shoots_client.put("100x",self.dataframe0,mode=PutMode.REPLACE)    
+        sql = "SELECT * FROM 100x"
+        with self.assertRaises(DataFusionError):
+            self.shoots_client.get("100x", sql)
+        self.shoots_client.delete("100x")        

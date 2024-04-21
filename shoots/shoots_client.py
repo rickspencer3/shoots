@@ -2,7 +2,7 @@ from pydantic import BaseModel, ValidationError, validator, model_validator
 from pydantic_settings import BaseSettings
 from typing import Optional
 import pyarrow as pa
-from pyarrow.flight import FlightDescriptor, FlightClient, Ticket, Action
+from pyarrow.flight import FlightDescriptor, FlightClient, Ticket, Action, FlightServerError
 import pandas as pd
 import json
 from enum import Enum
@@ -143,6 +143,16 @@ class GetRequest(BaseModel):
             raise ValueError('name must be a non-empty string')
         return v
 
+class DataFusionError(Exception):
+    """Custom exception for DataFusion-related errors."""
+    def __init__(self, message):
+        super().__init__(message)
+
+class BucketNotEmptyError(Exception):
+    """Custom exception for delete_bucket."""
+    def __init__(self, message):
+        super().__init__(message)
+
 class ShootsClient:
     """
     Client class for interacting with a ShootsServer instance.
@@ -169,6 +179,7 @@ class ShootsClient:
             tls (bool): Whether or not the server to connect to uses TLS.
             root_cert (string): A root certificate used by the server for tls signing if the server is using self-signed tls.
             token (string): A JWT to provide to the server. Requires TLS to be True.
+
         Raises:
             ValidationError: Occurs:
                  - If the provided host or port values are not valid
@@ -246,8 +257,8 @@ class ShootsClient:
         Raises:
             ValidationError: If the provided arguments are not valid or if there is a 
                             problem with the DataFrame format.
-            FlightServerError: If the dataframe already exists and the put mode was set to ERROR.
-            FlightServerError: Other problems encountered on the server while trying to write.
+            FileExistsError: If the dataframe already exists and the put mode was set to ERROR.
+            FlightServerError: Unhandled errors encountered on the server while trying to write.
 
         Example:
             To send a DataFrame 'df' to the server and store it as 'my_dataframe' in the 
@@ -275,19 +286,21 @@ class ShootsClient:
                                  "bucket":req.bucket,
                                  "batch_size":req.batch_size}).encode()
             
-            
             descriptor = FlightDescriptor.for_command(command_info)
             table = pa.Table.from_pandas(req.dataframe)
 
-            writer, _ = self.client.do_put(descriptor, table.schema)
-            
-            row_count = table.num_rows
-            with writer:
-                for start_idx in range(0, row_count, batch_size):
-                    end_idx = min(start_idx + batch_size, row_count)
-                    chunk = table.slice(start_idx, end_idx - start_idx)
-                    writer.write_table(chunk)
-
+            try:
+                writer, _ = self.client.do_put(descriptor, table.schema)
+                
+                row_count = table.num_rows
+                with writer:
+                    for start_idx in range(0, row_count, batch_size):
+                        end_idx = min(start_idx + batch_size, row_count)
+                        chunk = table.slice(start_idx, end_idx - start_idx)
+                        writer.write_table(chunk)
+            except FlightServerError as e:
+                raise self._translate_flight_error(e)
+                
         except ValidationError as e:
             print(f"Validation error: {e}")
 
@@ -312,7 +325,9 @@ class ShootsClient:
         Raises:
             ValidationError: If the provided arguments are not valid or if the request 
                             cannot be processed by the server.
-            FlightServerError: An error is encountered on the server, such as the specified dataframe cannot be found.
+            DataFusionError: The supplied SQL could not be processed by the server.
+            FileNotFoundError: The specified dataframe cannot be found.
+            FlightServerError: Unhandled errors arising from the server.
 
         Example:
             To retrieve a dataframe named 'my_dataframe' from the server, and filter it using an 
@@ -331,9 +346,13 @@ class ShootsClient:
 
             ticket_bytes = json.dumps(ticket_info)
             ticket = Ticket(ticket_bytes)
-            reader = self.client.do_get(ticket)
-            return reader.read_all().to_pandas()
-        
+            try:
+                reader = self.client.do_get(ticket)
+                df = reader.read_all().to_pandas()
+                return df
+            except FlightServerError as e:
+                raise self._translate_flight_error(e)
+ 
         except ValidationError as e:
             print(f"Validation error: {e}")
 
@@ -346,6 +365,9 @@ class ShootsClient:
 
         Returns:
             list: A list of strings, each representing a bucket name.
+        
+        Raises:
+            FlightServerError: Unhandled errors arising from the server.
 
         Example:
             To get a list of all buckets from the server, use the following:
@@ -379,8 +401,9 @@ class ShootsClient:
             str: A message indicating the result of the deletion operation.
 
         Raises:
-            FlightServerError: If the server encounters an error processing the deletion request.
-
+            BucketNotEmptyError: The specified bucket is not empty, and the BucketDeleteMode is set to ERROR.
+            FileNotFoundError: The specified bucket cannot be found.    
+        
         Example:
             To delete a bucket named 'my_bucket' and its contents, use the following:
 
@@ -394,9 +417,12 @@ class ShootsClient:
         action_info = {"name":req.name, "mode":req.mode.value}
         aciton_bytes = json.dumps(action_info).encode()
         action = Action("delete_bucket",aciton_bytes)
-        result = self.client.do_action(action)
-        return self._flight_result_to_string(result)       
-
+        try:
+            result = self.client.do_action(action)
+            return self._flight_result_to_string(result)       
+        except FlightServerError as e:
+            raise self._translate_flight_error(e)
+        
     def list(self, bucket: Optional[str] = None, regex: Optional[str] = None):
         """
         Lists dataframes available on the server, optionally filtered by a specific bucket.
@@ -419,7 +445,9 @@ class ShootsClient:
             for dataframe in dataframes:
                 print(dataframe["name"], dataframe["schema"])
             ```
-
+        Raises:
+            FileNotFounderror: The specified bucket does not exist on the server.
+            FlightServerError: Unhandled errors arising from the server.
         Note:
             The method returns an empty list if no dataframes match the filtering criteria or if 
             the server does not have any dataframes. The 'schema' in the returned dictionary is 
@@ -427,11 +455,15 @@ class ShootsClient:
         """
         descriptor_info = {"bucket":bucket, "regex":regex}
         descriptor_bytes = json.dumps(descriptor_info).encode()
-        flights = self.client.list_flights(criteria=descriptor_bytes)
-        dataframes = []
-        for flight in flights:
-            dataframes.append({"name":flight.descriptor.path[0].decode(), "schema":flight.schema})
-        return dataframes
+        try:
+            flights = self.client.list_flights(criteria=descriptor_bytes)
+
+            dataframes = []
+            for flight in flights:
+                dataframes.append({"name":flight.descriptor.path[0].decode(), "schema":flight.schema})
+            return dataframes
+        except FlightServerError as e:
+            raise self._translate_flight_error(e)
 
     def shutdown(self):
         """
@@ -475,7 +507,8 @@ class ShootsClient:
             str: A message indicating the result of the delete operation.
 
         Raises:
-            FlightServerError: If the server encounters an error processing the delete request.
+            FileNotFoundError: The specified dataframe does not exist.
+            FlightServerError: Unhandled errors arising from the server.
 
         Example:
             To delete a dataframe named 'my_dataframe' from the server, use the following:
@@ -492,9 +525,11 @@ class ShootsClient:
         """
         action_bytes = json.dumps({"name":name, "bucket":bucket}).encode()
         action = Action("delete",action_bytes)
-        result = self.client.do_action(action)
-
-        return self._flight_result_to_string(result)
+        try:
+            result = self.client.do_action(action)
+            return self._flight_result_to_string(result)
+        except FlightServerError as e:
+            raise self._translate_flight_error(e)
     
     def resample(self, 
                 source: str, 
@@ -526,9 +561,10 @@ class ShootsClient:
             time_col (str): The name of the time stamp column to window on
             aggregation_func (str): The name of the function to aggregate (examples: mean, max, count)
 
-
         Raises:
-            FlightServerError
+            FlightServerError: Unhandled errors arising from the server.
+            FileNotFoundError: Either the source dataframe or the target bucket do not exist.
+            DataFusionError: The supplied SQL could not be processed.
         
         Example:
             Resampling with a SQL query:
@@ -548,7 +584,6 @@ class ShootsClient:
                                 aggregation_func="mean",
                                 mode=PutMode.APPEND)
             ```
-
         """
 
         req = ResampleRequest(
@@ -577,9 +612,11 @@ class ShootsClient:
         
         action_bytes = json.dumps(resample_info).encode()
         action = Action("resample",action_bytes)
-        result = self.client.do_action(action)
-        return json.loads(self._flight_result_to_string(result))
-      
+        try:
+            result = self.client.do_action(action)
+            return json.loads(self._flight_result_to_string(result))
+        except FlightServerError as e:
+            raise self._translate_flight_error(e)
     def ping(self):
         """
         Sends a 'ping' to th server.
@@ -607,3 +644,20 @@ class ShootsClient:
         
         msg = msg.rstrip("\n")
         return msg
+    
+
+    def _translate_flight_error(self, e):
+        try:
+            exception_info = json.loads(e.extra_info)
+            exception_type = exception_info.get("type")
+            message = exception_info.get("message", "")
+
+            exception_map = {
+                "FileExistsError": FileExistsError,
+                "DataFusionError": DataFusionError,
+                "FileNotFoundError": FileNotFoundError,
+                "BucketNotEmptyError":BucketNotEmptyError
+            }
+            return exception_map[exception_type](message)
+        except:
+            return e
