@@ -153,6 +153,11 @@ class BucketNotEmptyError(Exception):
     def __init__(self, message):
         super().__init__(message)
 
+class InvalidTokenError(Exception):
+    """Custom exception for invalid tokens."""
+    def __init__(self, message):
+        super().__init__(message)
+
 class ShootsClient:
     """
     Client class for interacting with a ShootsServer instance.
@@ -223,8 +228,13 @@ class ShootsClient:
             self.client = FlightClient(url, **kwargs)
             if token:
                 auth_handler = JWTClientAuthHandler(token=token)
-                self.client.authenticate(auth_handler)
-
+                try:
+                    self.client.authenticate(auth_handler)
+                except FlightServerError as e:
+                    if "InvalidSignatureError" in str(e):
+                        raise(InvalidTokenError(message=f"The provided token is not valid on the server {host}:{port}"))
+                    else:
+                        raise(e)
         except ValidationError as e:
             print(f"Configuration error: {e}")
             raise
@@ -645,7 +655,6 @@ class ShootsClient:
         msg = msg.rstrip("\n")
         return msg
     
-
     def _translate_flight_error(self, e):
         try:
             exception_info = json.loads(e.extra_info)
