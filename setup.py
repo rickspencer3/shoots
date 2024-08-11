@@ -6,7 +6,7 @@ def read_requirements(filename):
     
 setup(
     name='shoots',
-    version='0.1.0',
+    version='0.1.1',
     author='Rick Spencer',
     author_email='richard.linger.spencer.3@gmail.com',
     description='A Pandas dataframe data lake',

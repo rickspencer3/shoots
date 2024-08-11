@@ -287,8 +287,6 @@ class BaseTest(unittest.TestCase):
             'float_col': floats,
             'string': strings})
         
-
-
     def _generate_dataframe_with_timestamp(self, num_rows):
         date_range_milliseconds = pd.date_range(start='2020-01-01', 
                                                 periods=num_rows, 
@@ -304,7 +302,6 @@ class BaseTest(unittest.TestCase):
     def test_list_with_bucket(self):
         with self.assertRaises(FileNotFoundError):
             self.shoots_client.list(bucket="thereisnobucketnamedthis")
-
 
         self.shoots_client.put("test1",
                         self.dataframe0,

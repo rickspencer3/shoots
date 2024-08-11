@@ -14,7 +14,6 @@ try:
 except ImportError:
     from shoots.jwt_server_auth import JWTServerAuthHandler, JWTMiddleware
 
-
 put_modes = ["error", "append", "replace"]
 
 class ShootsServer(flight.FlightServerBase):
@@ -615,15 +614,12 @@ class ShootsServer(flight.FlightServerBase):
         
         super(ShootsServer, self).serve()
 
-
-
 def _read_cert_files(cert_file, key_file):
     with open(cert_file, 'r') as cert_file_content:
         cert_data = cert_file_content.read()
     with open(key_file, 'r') as key_file_content:
         key_data = key_file_content.read()
     return(cert_data, key_data)
-
 
 def main():
     parser = argparse.ArgumentParser(description='Starts the Shoots Flight Server.')
