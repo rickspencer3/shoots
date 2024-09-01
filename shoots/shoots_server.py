@@ -75,10 +75,11 @@ class ShootsServer(flight.FlightServerBase):
     def generate_admin_jwt(self):
         if self.secret:
             payload = {
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=365),
-            'iat': datetime.datetime.utcnow(),
-            'server': self.location.uri.decode(),
-            'type':'admin'}
+                'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=365),
+                'iat': datetime.datetime.now(datetime.timezone.utc),
+                'server': self.location.uri.decode(),
+                'type': 'admin'
+            }
 
             return jwt.encode(payload, self.secret, algorithm='HS256')
         else:
