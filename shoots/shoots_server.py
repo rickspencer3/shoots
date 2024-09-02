@@ -446,8 +446,7 @@ class ShootsServer(flight.FlightServerBase):
         method = getattr(df_source, aggregation_func, None)
         df_target = method()
         target_rows = df_target.shape[0]
- 
-        table = pa.Table.from_pandas(df_target)
+        table = pa.Table.from_pandas(df_target, preserve_index=False)
         if mode != "append":    
             self._write_arrow_table(target, mode ,target_bucket, table)
         else:
