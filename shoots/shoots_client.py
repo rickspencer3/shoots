@@ -297,7 +297,7 @@ class ShootsClient:
                                  "batch_size":req.batch_size}).encode()
             
             descriptor = FlightDescriptor.for_command(command_info)
-            table = pa.Table.from_pandas(req.dataframe)
+            table = pa.Table.from_pandas(req.dataframe, preserve_index=False)
 
             try:
                 writer, _ = self.client.do_put(descriptor, table.schema)
