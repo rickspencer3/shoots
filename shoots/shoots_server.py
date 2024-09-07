@@ -9,6 +9,7 @@ import threading
 import argparse
 import jwt
 import datetime
+
 try:
     from .jwt_server_auth import JWTServerAuthHandler, JWTMiddleware
 except ImportError:
@@ -152,7 +153,9 @@ class ShootsServer(flight.FlightServerBase):
             raise e
 
         except Exception as e:
-            raise flight.FlightServerError(extra_info=str(e))
+            exception = {"type":"DataFusionError",
+                         "message":str(e)}
+            raise flight.FlightServerError(extra_info=json.dumps(exception))
 
     def _get_arrow_table_from_sql(self, name, file_path, sql_query):
         try:
@@ -160,6 +163,7 @@ class ShootsServer(flight.FlightServerBase):
             ctx.register_parquet(name, file_path)
             result = ctx.sql(sql_query)
             table = result.to_arrow_table()
+
             return table
         except Exception as e:
             if "DataFusion error" in str(e):
