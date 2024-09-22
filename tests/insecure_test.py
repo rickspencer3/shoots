@@ -1,8 +1,8 @@
-from base_test import BaseTest
+from base_test import ShootsTestBase
 from shoots import ShootsServer, ShootsClient
 from pyarrow.flight import Location, FlightClient
 
-class InsecureTest(BaseTest):
+class InsecureTest(ShootsTestBase):
     port = 8082
     bucket_dir = "insecure_buckets"
     def _set_up_server(self):

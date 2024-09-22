@@ -8,9 +8,9 @@ import random
 import string
 import unittest
 
-class BaseTest(unittest.TestCase):
+class ShootsTestBase(unittest.TestCase):
     def __init__(self, *args, **kwargs):
-        super(BaseTest, self).__init__(*args, **kwargs)
+        super(ShootsTestBase, self).__init__(*args, **kwargs)
 
     def _set_up_server(self):
         pass
@@ -23,8 +23,10 @@ class BaseTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.server = cls._set_up_server(cls)
+        if cls is ShootsTestBase:
+            raise unittest.SkipTest("ShootsTestBase is a base class and should not be executed directly.")
 
+        cls.server = cls._set_up_server(cls)
         cls.server_thread = threading.Thread(target=cls.server.serve)
         cls.server_thread.start()
 
