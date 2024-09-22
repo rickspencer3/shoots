@@ -1,8 +1,8 @@
-from base_test import BaseTest
+from base_test import ShootsTestBase
 from shoots import ShootsServer, ShootsClient
 from pyarrow.flight import Location, FlightClient, FlightUnavailableError
 
-class TLSTest(BaseTest):
+class TLSTest(ShootsTestBase):
     port = 8083
     bucket_dir = "tls_buckets"
     def _set_up_server(self):
