@@ -226,9 +226,7 @@ class ShootsServer(flight.FlightServerBase):
         file_path = self._create_file_path(name, bucket)
         if os.path.exists(file_path):
             if mode == "append":
-                existing_table = pq.read_table(file_path)
-                data_table = pa.concat_tables([data_table, existing_table])
-                pq.write_table(data_table, file_path)
+                data_table = self._append_arrow_to_parquet(data_table, file_path)
             
             elif(mode == "error"):
                 exception = {"type":"FileExistsError",
@@ -238,6 +236,12 @@ class ShootsServer(flight.FlightServerBase):
                 pq.write_table(data_table, file_path)
         else:
             pq.write_table(data_table, file_path)
+
+    def _append_arrow_to_parquet(self, data_table, file_path):
+        existing_table = pq.read_table(file_path)
+        data_table = pa.concat_tables([data_table, existing_table])
+        pq.write_table(data_table, file_path)
+        return data_table
 
     def list_flights(self, context, criteria):
         """
@@ -452,11 +456,8 @@ class ShootsServer(flight.FlightServerBase):
         else:
             file_path = self._create_file_path(target, target_bucket)
             if os.path.exists(file_path):
-                existing_table = pq.read_table(file_path)
-              
-                data_table = pa.concat_tables([existing_table, table])
+                self._append_arrow_to_parquet(table,file_path)
 
-                pq.write_table(data_table, file_path)
             else:
                 self._write_arrow_table(target, mode ,target_bucket, table)
 
