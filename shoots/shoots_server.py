@@ -238,7 +238,6 @@ class ShootsServer(flight.FlightServerBase):
         while True:
             try:
                 data_chunk = reader.read_chunk()
-                print(f"writing chunk {chunks} for {file_path}")
                 chunks += 1
                 if data_chunk is None:
                     break
