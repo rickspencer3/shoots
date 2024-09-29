@@ -229,13 +229,17 @@ class ShootsServer(flight.FlightServerBase):
         if mode == "replace" and os.path.exists(file_path):
             os.remove(file_path)
 
+        # fastparquet.write() chokes on append if the file doesn't exist yet
         if not os.path.exists(file_path):
             append = False
         else:
             append = True
+        chunks = 0
         while True:
             try:
                 data_chunk = reader.read_chunk()
+                print(f"writing chunk {chunks} for {file_path}")
+                chunks += 1
                 if data_chunk is None:
                     break
                 
@@ -243,8 +247,12 @@ class ShootsServer(flight.FlightServerBase):
                 append = True
                 
 
+            # the Apache Arrow API uses an exception for signaling
+            # that the reader has no more data
             except StopIteration:
                 break
+
+            # TODO: Handle other exceptions
 
         # data_table = reader.read_all()
         # self._write_arrow_table(name, mode, bucket, data_table) 

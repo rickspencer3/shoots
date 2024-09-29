@@ -80,7 +80,7 @@ class PutRequest(BaseModel):
     name: str
     mode: PutMode = PutMode.APPEND
     bucket: Optional[str] = None
-    batch_size: Optional[int] = 5000
+    batch_size: Optional[int] = 500000
 
     class Config:
         arbitrary_types_allowed = True
@@ -244,7 +244,7 @@ class ShootsClient:
             dataframe: pd.DataFrame, 
             mode: PutMode = PutMode.ERROR,
             bucket: Optional[str] = None,
-            batch_size: Optional[int] = 5000):
+            batch_size: Optional[int] = 500000):
         """
         Sends a dataframe to the server to be stored or appended to an existing dataframe.
 

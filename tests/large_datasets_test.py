@@ -9,7 +9,7 @@ import unittest
 class LargeDatasetsTest(unittest.TestCase):
     port = 8085
     bucket_dir = "large_datasets_buckets"
-    dataset_name = "onehundermillion"
+    dataset_name = "onehundredmillion"
     def __init__(self, *args, **kwargs):
         super(LargeDatasetsTest, self).__init__(*args, **kwargs)
 
@@ -58,7 +58,7 @@ class LargeDatasetsTest(unittest.TestCase):
         self.client.delete(self.dataset_name)
     
     def test_batch_size(self):
-        batch_sizes = [5000, 10000]
+        batch_sizes = [1000000]#, 5000, 10000]
         
         for batch_size in batch_sizes:
             print(f"testing put() for {batch_size}")
