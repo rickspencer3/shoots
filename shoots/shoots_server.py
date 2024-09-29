@@ -216,9 +216,38 @@ class ShootsServer(flight.FlightServerBase):
         mode = command_info["mode"]
         bucket = command_info["bucket"]
 
+        # bail if there is incorrect data in the mode
         self._raise_if_invalid_put_mode(mode)
-        data_table = reader.read_all()
-        self._write_arrow_table(name, mode, bucket, data_table) 
+
+        file_path = self._create_file_path(name, bucket)
+
+        if mode == "error" and os.path.exists(file_path):
+                exception = {"type":"FileExistsError",
+                             "message":f"Dataframe {name} Exists"}
+                raise flight.FlightServerError(f"File {name} Exists", extra_info=json.dumps(exception))
+        
+        if mode == "replace" and os.path.exists(file_path):
+            os.remove(file_path)
+
+        if not os.path.exists(file_path):
+            append = False
+        else:
+            append = True
+        while True:
+            try:
+                data_chunk = reader.read_chunk()
+                if data_chunk is None:
+                    break
+                
+                fp.write(file_path, data_chunk.data.to_pandas(), append=append)
+                append = True
+                
+
+            except StopIteration:
+                break
+
+        # data_table = reader.read_all()
+        # self._write_arrow_table(name, mode, bucket, data_table) 
 
     def _raise_if_invalid_put_mode(self, mode):
         if mode not in put_modes:
@@ -242,7 +271,6 @@ class ShootsServer(flight.FlightServerBase):
     def _append_arrow_to_parquet(self, data_table, file_path):
         fp.write(file_path, data_table.to_pandas(), append=True)
     
-
     def list_flights(self, context, criteria):
         """
         Lists available dataframes based on given criteria.
