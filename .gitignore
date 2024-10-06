@@ -11,3 +11,5 @@ certs/
 shoots.egg-info/
 build/
 dist/
+scratch.py
+scratch.parquet
