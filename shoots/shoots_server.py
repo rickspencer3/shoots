@@ -221,6 +221,9 @@ class ShootsServer(flight.FlightServerBase):
 
         file_path = self._create_file_path(name, bucket)
         
+        # In order to avoid calling os.path.exists for each written chunk
+        # it's necessary to track whether the target file has been created yet
+        # in the code that calls _write_arrow_to_parquet
         parquet_exists = os.path.exists(file_path)
         if mode == "error" and parquet_exists:
             self._raise_dataframe_exists_error(name)
@@ -236,9 +239,7 @@ class ShootsServer(flight.FlightServerBase):
                 chunks += 1
                 if data_chunk is None:
                     break
-
-
-                self._write_arrow_table(file_path=file_path,
+                self._write_arrow_to_parquet(file_path=file_path,
                                         data_table=data_chunk.data,
                                         append = parquet_exists)
                 parquet_exists = True
@@ -260,7 +261,7 @@ class ShootsServer(flight.FlightServerBase):
             raise flight.FlightServerError(f"put mode is {mode}, must be one of {put_modes}")
 
     # this function is necessary to be the chokepoint
-    def _write_arrow_table(self, *, file_path, data_table, append):
+    def _write_arrow_to_parquet(self, *, file_path, data_table, append):
         try:
             fp.write(file_path, data_table.to_pandas(), append=append)
         except FileNotFoundError as e:
@@ -455,11 +456,14 @@ class ShootsServer(flight.FlightServerBase):
         table = self._get_arrow_table_from_sql(source, source_file_path, sql)
         target_rows = table.num_rows
 
+        # In order to avoid calling os.path.exists for each written chunk
+        # it's necessary to track whether the target file has been created yet
+        # in the code that calls _write_arrow_to_parquet
         parquet_exists = os.path.exists(target_file_path)
         append = False
         if mode == "append" and parquet_exists:
             append = True
-        self._write_arrow_table(file_path=target_file_path,
+        self._write_arrow_to_parquet(file_path=target_file_path,
                                 data_table=table,
                                 append=append)
         
@@ -490,6 +494,9 @@ class ShootsServer(flight.FlightServerBase):
         table = pa.Table.from_pandas(df_target, preserve_index=False)
         target_file_path = self._create_file_path(target, target_bucket)
         
+        # In order to avoid calling os.path.exists for each written chunk
+        # it's necessary to track whether the target file has been created yet
+        # in the code that calls _write_arrow_to_parquet
         parquet_exists = os.path.exists(target_file_path)
         if mode == "error" and parquet_exists:
             self._raise_dataframe_exists_error(target)
@@ -497,7 +504,7 @@ class ShootsServer(flight.FlightServerBase):
             append = False
             if mode == "append" and parquet_exists:
                 append = True
-            self._write_arrow_table(file_path=target_file_path,
+            self._write_arrow_to_parquet(file_path=target_file_path,
                                     data_table=table,
                                     append=append)
 
