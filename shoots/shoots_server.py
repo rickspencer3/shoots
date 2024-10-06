@@ -261,8 +261,14 @@ class ShootsServer(flight.FlightServerBase):
 
     # this function is necessary to be the chokepoint
     def _write_arrow_table(self, *, file_path, data_table, append):
-        fp.write(file_path, data_table.to_pandas(), append=append)
-    
+        try:
+            fp.write(file_path, data_table.to_pandas(), append=append)
+        except FileNotFoundError as e:
+                exception = {"type":"FileNotFoundError",
+                             "message":f"Attempt to append to missing dataframe {file_path}."}
+                raise flight.FlightServerError(extra_info=json.dumps(exception))
+
+
     def list_flights(self, context, criteria):
         """
         Lists available dataframes based on given criteria.
