@@ -220,20 +220,15 @@ class ShootsServer(flight.FlightServerBase):
         self._raise_if_invalid_put_mode(mode)
 
         file_path = self._create_file_path(name, bucket)
-
-        if mode == "error" and os.path.exists(file_path):
-                exception = {"type":"FileExistsError",
-                             "message":f"Dataframe {name} Exists"}
-                raise flight.FlightServerError(f"File {name} Exists", extra_info=json.dumps(exception))
+        
+        parquet_exists = os.path.exists(file_path)
+        if mode == "error" and parquet_exists:
+            self._raise_dataframe_exists_error(name)
         
         if mode == "replace" and os.path.exists(file_path):
             os.remove(file_path)
+            parquet_exists = False
 
-        # fastparquet.write() chokes on append if the file doesn't exist yet
-        if not os.path.exists(file_path):
-            append = False
-        else:
-            append = True
         chunks = 0
         while True:
             try:
@@ -241,42 +236,32 @@ class ShootsServer(flight.FlightServerBase):
                 chunks += 1
                 if data_chunk is None:
                     break
-                
-                fp.write(file_path, data_chunk.data.to_pandas(), append=append)
-                append = True
-                
 
+
+                self._write_arrow_table(file_path=file_path,
+                                        data_table=data_chunk.data,
+                                        append = parquet_exists)
+                parquet_exists = True
+                
             # the Apache Arrow API uses an exception for signaling
             # that the reader has no more data
             except StopIteration:
                 break
 
-            # TODO: Handle other exceptions
+    def _raise_dataframe_exists_error(self, name):
+        exception = {"type":"FileExistsError",
+                            "message":f"Dataframe {name} Exists"}
+        raise flight.FlightServerError(f"File {name} Exists", extra_info=json.dumps(exception))
 
-        # data_table = reader.read_all()
-        # self._write_arrow_table(name, mode, bucket, data_table) 
+            # TODO: Handle other exceptions
 
     def _raise_if_invalid_put_mode(self, mode):
         if mode not in put_modes:
             raise flight.FlightServerError(f"put mode is {mode}, must be one of {put_modes}")
 
-    def _write_arrow_table(self, name, mode, bucket, data_table):
-        file_path = self._create_file_path(name, bucket)
-        if os.path.exists(file_path):
-            if mode == "append":
-                self._append_arrow_to_parquet(data_table, file_path)
-            
-            elif(mode == "error"):
-                exception = {"type":"FileExistsError",
-                             "message":f"Dataframe {name} Exists"}
-                raise flight.FlightServerError(f"File {name} Exists", extra_info=json.dumps(exception))
-            else:
-                pq.write_table(data_table, file_path)
-        else:
-            pq.write_table(data_table, file_path)
-
-    def _append_arrow_to_parquet(self, data_table, file_path):
-        fp.write(file_path, data_table.to_pandas(), append=True)
+    # this function is necessary to be the chokepoint
+    def _write_arrow_table(self, *, file_path, data_table, append):
+        fp.write(file_path, data_table.to_pandas(), append=append)
     
     def list_flights(self, context, criteria):
         """
@@ -453,14 +438,25 @@ class ShootsServer(flight.FlightServerBase):
 
         target_rows = -1
 
-        file_path = self._create_file_path(source, source_bucket)
-        if not os.path.exists(file_path):
+        source_file_path = self._create_file_path(source, source_bucket)
+        target_file_path = self._create_file_path(target, target_bucket)
+
+        if not os.path.exists(source_file_path):
             exception = {"type":"FileNotFoundError",
                 "message":f"Dataframe {source} not found"}
             raise flight.FlightServerError(extra_info=json.dumps(exception))
-        table = self._get_arrow_table_from_sql(source, file_path, sql)
+        
+        table = self._get_arrow_table_from_sql(source, source_file_path, sql)
         target_rows = table.num_rows
-        self._write_arrow_table(target, mode, target_bucket, table)
+
+        parquet_exists = os.path.exists(target_file_path)
+        append = False
+        if mode == "append" and parquet_exists:
+            append = True
+        self._write_arrow_table(file_path=target_file_path,
+                                data_table=table,
+                                append=append)
+        
         return self._flight_result_from_dict({"target_rows":target_rows})
     
     def _resample_time_series(self, resample_info):
@@ -486,15 +482,18 @@ class ShootsServer(flight.FlightServerBase):
         df_target = method()
         target_rows = df_target.shape[0]
         table = pa.Table.from_pandas(df_target, preserve_index=False)
-        if mode != "append":    
-            self._write_arrow_table(target, mode ,target_bucket, table)
+        target_file_path = self._create_file_path(target, target_bucket)
+        
+        parquet_exists = os.path.exists(target_file_path)
+        if mode == "error" and parquet_exists:
+            self._raise_dataframe_exists_error(target)
         else:
-            file_path = self._create_file_path(target, target_bucket)
-            if os.path.exists(file_path):
-                self._append_arrow_to_parquet(table,file_path)
-
-            else:
-                self._write_arrow_table(target, mode ,target_bucket, table)
+            append = False
+            if mode == "append" and parquet_exists:
+                append = True
+            self._write_arrow_table(file_path=target_file_path,
+                                    data_table=table,
+                                    append=append)
 
         return self._flight_result_from_dict({"source_rows":source_rows,
                                               "target_rows":target_rows})
