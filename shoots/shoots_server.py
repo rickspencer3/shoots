@@ -262,6 +262,14 @@ class ShootsServer(flight.FlightServerBase):
 
     # this function is necessary to be the chokepoint
     def _write_arrow_to_parquet(self, *, file_path, data_table, append):
+        # In order to avoid calling os.path.exists for each written chunk
+        # it's necessary to track whether the target file has been created yet
+        # in the code that calls _write_arrow_to_parquet not inside this function.
+        # fp.write() will throw FileNotFoundError if, for example, a different
+        # process comes along and deletes the file while chunks are being written.
+        # Of course, this needs to be converted to a FlightServerError to be passed back to the client
+        # over the grpc interace, and then will be converted abck to a FileNotFoundError
+        # in the client (assuming the shoots client is being used)
         try:
             fp.write(file_path, data_table.to_pandas(), append=append)
         except FileNotFoundError as e:
