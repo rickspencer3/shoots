@@ -184,31 +184,10 @@ class ShootsTestBase(unittest.TestCase):
     def test_resample_no_buckets(self):
         num_rows = 1000000
         df = self._generate_dataframe_with_timestamp(num_rows)
+        name = "million_1"
+        self.shoots_client.put(name=name, dataframe=df)
 
-        self.shoots_client.put(name="million", dataframe=df)
-
-        res = self.shoots_client.resample(source="million", 
-                             target="thousand",
-                             rule="10s",
-                             time_col="timestamp",
-                             aggregation_func="mean"
-                             )
-        
-        self.assertEqual(res["target_rows"], 1000)
-
-        df_thousands = self.shoots_client.get("thousand")
-        self.assertEqual(df_thousands.shape[0], 1000)    
-
-        self.shoots_client.delete("million")
-        self.shoots_client.delete("thousand")
-
-    def test_resample_append(self):
-        num_rows = 1000000
-        df = self._generate_dataframe_with_timestamp(num_rows)
-
-        self.shoots_client.put(name="million", dataframe=df)
-
-        res = self.shoots_client.resample(source="million", 
+        res = self.shoots_client.resample(source=name, 
                              target="thousand",
                              rule="10s",
                              time_col="timestamp",
@@ -216,7 +195,27 @@ class ShootsTestBase(unittest.TestCase):
         
         self.assertEqual(res["target_rows"], 1000)
 
-        self.shoots_client.resample(source="million", 
+        df_thousands = self.shoots_client.get("thousand")
+        self.assertEqual(df_thousands.shape[0], 1000)    
+     
+        self.shoots_client.delete(name)
+        self.shoots_client.delete("thousand")
+
+    def test_resample_append(self):
+        num_rows = 1000000
+        df = self._generate_dataframe_with_timestamp(num_rows)
+        name = "million_2"
+        self.shoots_client.put(name=name, dataframe=df)
+
+        res = self.shoots_client.resample(source=name, 
+                             target="thousand",
+                             rule="10s",
+                             time_col="timestamp",
+                             aggregation_func="mean")
+        
+        self.assertEqual(res["target_rows"], 1000)
+
+        self.shoots_client.resample(source=name, 
                              target="thousand",
                              rule="10s",
                              time_col="timestamp",
@@ -227,7 +226,7 @@ class ShootsTestBase(unittest.TestCase):
         self.assertEqual(df_thousands.shape[0], 1000)    
 
 
-        self.shoots_client.resample(source="million", 
+        self.shoots_client.resample(source=name, 
                              target="thousand",
                              rule="10s",
                              time_col="timestamp",
@@ -237,18 +236,19 @@ class ShootsTestBase(unittest.TestCase):
         df_thousands = self.shoots_client.get("thousand")
         self.assertEqual(df_thousands.shape[0], 2000) 
 
-        self.shoots_client.delete("million")
+        self.shoots_client.delete(name)
         self.shoots_client.delete("thousand")
 
     def test_resample_with_buckets(self):
         num_rows = 1000000
         df = self._generate_dataframe_with_timestamp(num_rows)
 
+        name = "million_0"
         source_bucket="million_bucket"
         target_bucket="thousand_bucket"
-        self.shoots_client.put(name="million", dataframe=df, bucket=source_bucket)
+        self.shoots_client.put(name=name, dataframe=df, bucket=source_bucket)
 
-        res = self.shoots_client.resample(source="million", 
+        res = self.shoots_client.resample(source=name, 
                              target="thousand",
                              rule="10s",
                              time_col="timestamp",
@@ -261,7 +261,7 @@ class ShootsTestBase(unittest.TestCase):
         df_thousands = self.shoots_client.get("thousand",bucket=target_bucket)
         self.assertEqual(df_thousands.shape[0], 1000)    
 
-        self.shoots_client.delete("million", bucket=source_bucket)
+        self.shoots_client.delete(name, bucket=source_bucket)
         self.shoots_client.delete("thousand", bucket=target_bucket)
 
     def test_resample_no_such(self):
