@@ -11,7 +11,7 @@ import argparse
 import jwt
 import datetime
 import queue
-import concurrent.futures as Future
+from concurrent.futures import Future, ThreadPoolExecutor
 
 try:
     from .jwt_server_auth import JWTServerAuthHandler, JWTMiddleware
@@ -78,7 +78,7 @@ class ShootsServer(flight.FlightServerBase):
         
         self.write_queues = {}
         self.queue_locks = {}
-
+        self.executor = ThreadPoolExecutor(max_workers=10)
 
     def generate_admin_jwt(self):
         if self.secret:
@@ -229,7 +229,7 @@ class ShootsServer(flight.FlightServerBase):
         
         # In order to avoid calling os.path.exists for each written chunk
         # it's necessary to track whether the target file has been created yet
-        # in the code that calls _write_arrow_to_parquet
+        # in the code that calls enqueue_write_request
         parquet_exists = os.path.exists(file_path)
         if mode == "error" and parquet_exists:
             self._raise_dataframe_exists_error(name)
@@ -267,15 +267,10 @@ class ShootsServer(flight.FlightServerBase):
             raise flight.FlightServerError(f"put mode is {mode}, must be one of {put_modes}")
 
     # this function is necessary to be the chokepoint
-    def _enqueue_write_request(self, *, file_path, data_table, append):
-        # In order to avoid calling os.path.exists for each written chunk
-        # it's necessary to track whether the target file has been created yet
-        # in the code that calls _write_arrow_to_parquet not inside this function.
-        # fp.write() will throw FileNotFoundError if, for example, a different
-        # process comes along and deletes the file while chunks are being written.
-        # Of course, this needs to be converted to a FlightServerError to be passed back to the client
-        # over the grpc interace, and then will be converted abck to a FileNotFoundError
-        # in the client (assuming the shoots client is being used)
+    def _enqueue_write_request(self, file_path, data_table, append):
+        """
+        Enqueues a write request for a given file and waits for the result.
+        """
         # Create a queue and lock for the file_path if it doesn't exist
         if file_path not in self.write_queues:
             self.write_queues[file_path] = queue.Queue()
@@ -295,15 +290,15 @@ class ShootsServer(flight.FlightServerBase):
 
     def _process_write_queue_async(self, file_path):
         """
-        Processes the write queue for a specific file asynchronously.
+        Processes the write queue for a specific file asynchronously using a thread pool.
         Ensures that only one thread is processing the queue for a given file.
         """
         # Acquire the lock for this file_path to ensure only one processing thread
         # is active at a time for the same file.
         with self.queue_locks[file_path]:
-            # Start a new thread to process the queue if it's not already being processed
+            # Submit the queue processing to the thread pool executor
             if not self.write_queues[file_path].empty():
-                threading.Thread(target=self._process_write_queue, args=(file_path,)).start()
+                self.executor.submit(self._process_write_queue, file_path)
 
     def _process_write_queue(self, file_path):
         """
@@ -314,7 +309,7 @@ class ShootsServer(flight.FlightServerBase):
 
             try:
                 # Call the write function
-                self._enqueue_write_request(file_path=file_path, data_table=data_table, append=append)
+                self._write_arrow_to_parquet(file_path=file_path, data_table=data_table, append=append)
                 # If the write succeeds, set the result on the future
                 future.set_result("Write successful")
 
@@ -325,7 +320,7 @@ class ShootsServer(flight.FlightServerBase):
             # Mark the queue task as done
             self.write_queues[file_path].task_done()
 
-    def _enqueue_write_request(self, file_path, data_table, append):
+    def _write_arrow_to_parquet(self, file_path, data_table, append):
         """
         Writes the given Arrow table to a Parquet file at the specified path.
         """
@@ -532,7 +527,7 @@ class ShootsServer(flight.FlightServerBase):
 
         # In order to avoid calling os.path.exists for each written chunk
         # it's necessary to track whether the target file has been created yet
-        # in the code that calls _write_arrow_to_parquet
+        # in the code that calls enqueue_write_request
         parquet_exists = os.path.exists(target_file_path)
         append = False
         if mode == "append" and parquet_exists:
@@ -570,7 +565,7 @@ class ShootsServer(flight.FlightServerBase):
         
         # In order to avoid calling os.path.exists for each written chunk
         # it's necessary to track whether the target file has been created yet
-        # in the code that calls _write_arrow_to_parquet
+        # in the code that calls enqueue_write_request
         parquet_exists = os.path.exists(target_file_path)
         if mode == "error" and parquet_exists:
             self._raise_dataframe_exists_error(target)
