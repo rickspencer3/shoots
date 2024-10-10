@@ -10,6 +10,8 @@ import threading
 import argparse
 import jwt
 import datetime
+import queue
+import concurrent.futures as Future
 
 try:
     from .jwt_server_auth import JWTServerAuthHandler, JWTMiddleware
@@ -73,6 +75,10 @@ class ShootsServer(flight.FlightServerBase):
                                    verify_client=False,
                                    middleware=middleware,
                                    *args, **kwargs)
+        
+        self.write_queues = {}
+        self.queue_locks = {}
+
 
     def generate_admin_jwt(self):
         if self.secret:
@@ -239,7 +245,7 @@ class ShootsServer(flight.FlightServerBase):
                 chunks += 1
                 if data_chunk is None:
                     break
-                self._write_arrow_to_parquet(file_path=file_path,
+                self._enqueue_write_request(file_path=file_path,
                                         data_table=data_chunk.data,
                                         append = parquet_exists)
                 parquet_exists = True
@@ -261,7 +267,7 @@ class ShootsServer(flight.FlightServerBase):
             raise flight.FlightServerError(f"put mode is {mode}, must be one of {put_modes}")
 
     # this function is necessary to be the chokepoint
-    def _write_arrow_to_parquet(self, *, file_path, data_table, append):
+    def _enqueue_write_request(self, *, file_path, data_table, append):
         # In order to avoid calling os.path.exists for each written chunk
         # it's necessary to track whether the target file has been created yet
         # in the code that calls _write_arrow_to_parquet not inside this function.
@@ -270,14 +276,74 @@ class ShootsServer(flight.FlightServerBase):
         # Of course, this needs to be converted to a FlightServerError to be passed back to the client
         # over the grpc interace, and then will be converted abck to a FileNotFoundError
         # in the client (assuming the shoots client is being used)
+        # Create a queue and lock for the file_path if it doesn't exist
+        if file_path not in self.write_queues:
+            self.write_queues[file_path] = queue.Queue()
+            self.queue_locks[file_path] = threading.Lock()
+
+        # Create a Future object for the result
+        future = Future()
+
+        # Enqueue the write request (data_table and future)
+        self.write_queues[file_path].put((data_table, append, future))
+
+        # Trigger queue processing
+        self._process_write_queue_async(file_path)
+
+        # Wait for the result of the future before returning (makes the call synchronous)
+        return future.result()  # This will block until the write completes or fails
+
+    def _process_write_queue_async(self, file_path):
+        """
+        Processes the write queue for a specific file asynchronously.
+        Ensures that only one thread is processing the queue for a given file.
+        """
+        # Acquire the lock for this file_path to ensure only one processing thread
+        # is active at a time for the same file.
+        with self.queue_locks[file_path]:
+            # Start a new thread to process the queue if it's not already being processed
+            if not self.write_queues[file_path].empty():
+                threading.Thread(target=self._process_write_queue, args=(file_path,)).start()
+
+    def _process_write_queue(self, file_path):
+        """
+        Processes all pending write requests in the queue for the given file_path.
+        """
+        while not self.write_queues[file_path].empty():
+            data_table, append, future = self.write_queues[file_path].get()
+
+            try:
+                # Call the write function
+                self._enqueue_write_request(file_path=file_path, data_table=data_table, append=append)
+                # If the write succeeds, set the result on the future
+                future.set_result("Write successful")
+
+            except Exception as e:
+                # If there's an error, set the exception on the future
+                future.set_exception(e)
+
+            # Mark the queue task as done
+            self.write_queues[file_path].task_done()
+
+    def _enqueue_write_request(self, file_path, data_table, append):
+        """
+        Writes the given Arrow table to a Parquet file at the specified path.
+        """
         try:
-            fp.write(file_path, data_table.to_pandas(), append=append)
+            # Convert the Arrow table to a Pandas DataFrame, which is required by fastparquet
+            df = data_table.to_pandas()
+
+            # Perform the write operation with fastparquet
+            fp.write(file_path, df, append=append)
+
         except FileNotFoundError as e:
-                exception = {"type":"FileNotFoundError",
-                             "message":f"Attempt to append to missing dataframe {file_path}."}
-                raise flight.FlightServerError(extra_info=json.dumps(exception))
-
-
+            # Handle a missing file scenario, translate it into a FlightServerError
+            exception = {
+                "type": "FileNotFoundError",
+                "message": f"Attempt to append to missing dataframe {file_path}."
+            }
+            raise flight.FlightServerError(extra_info=json.dumps(exception))
+        
     def list_flights(self, context, criteria):
         """
         Lists available dataframes based on given criteria.
@@ -471,7 +537,7 @@ class ShootsServer(flight.FlightServerBase):
         append = False
         if mode == "append" and parquet_exists:
             append = True
-        self._write_arrow_to_parquet(file_path=target_file_path,
+        self._enqueue_write_request(file_path=target_file_path,
                                 data_table=table,
                                 append=append)
         
@@ -512,7 +578,7 @@ class ShootsServer(flight.FlightServerBase):
             append = False
             if mode == "append" and parquet_exists:
                 append = True
-            self._write_arrow_to_parquet(file_path=target_file_path,
+            self._enqueue_write_request(file_path=target_file_path,
                                     data_table=table,
                                     append=append)
 
