@@ -12,6 +12,9 @@ import jwt
 import datetime
 import queue
 from concurrent.futures import Future, ThreadPoolExecutor
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     from .jwt_server_auth import JWTServerAuthHandler, JWTMiddleware
@@ -242,12 +245,15 @@ class ShootsServer(flight.FlightServerBase):
         while True:
             try:
                 data_chunk = reader.read_chunk()
+                logger.debug(f"chunck {chunks} read")
                 chunks += 1
                 if data_chunk is None:
                     break
+                
                 self._enqueue_write_request(file_path=file_path,
                                         data_table=data_chunk.data,
                                         append = parquet_exists)
+                logger.debug(f"chunk {chunks} enqueued")
                 parquet_exists = True
                 
             # the Apache Arrow API uses an exception for signaling
@@ -275,13 +281,15 @@ class ShootsServer(flight.FlightServerBase):
         if file_path not in self.write_queues:
             self.write_queues[file_path] = queue.Queue()
             self.queue_locks[file_path] = threading.Lock()
-
+            logger.debug(f"queue and lock for {file_path} created")
+ 
         # Create a Future object for the result
         future = Future()
 
         # Enqueue the write request (data_table and future)
         self.write_queues[file_path].put((data_table, append, future))
-
+        logger.debug(f"data enqueud at position {self.write_queues[file_path].qsize()}")
+        
         # Trigger queue processing
         self._process_write_queue_async(file_path)
 
@@ -299,6 +307,7 @@ class ShootsServer(flight.FlightServerBase):
             # Submit the queue processing to the thread pool executor
             if not self.write_queues[file_path].empty():
                 self.executor.submit(self._process_write_queue, file_path)
+                logger.debug(f"_process_write_queue task added")
 
     def _process_write_queue(self, file_path):
         """
@@ -307,17 +316,17 @@ class ShootsServer(flight.FlightServerBase):
         while not self.write_queues[file_path].empty():
             data_table, append, future = self.write_queues[file_path].get()
 
+
             try:
-                # Call the write function
-                self._write_arrow_to_parquet(file_path=file_path, data_table=data_table, append=append)
-                # If the write succeeds, set the result on the future
-                future.set_result("Write successful")
+                with self.queue_locks[file_path]:
+                    self._write_arrow_to_parquet(file_path=file_path, data_table=data_table, append=append)
+                    # If the write succeeds, set the result on the future
+                    future.set_result("Write successful")
 
             except Exception as e:
                 # If there's an error, set the exception on the future
                 future.set_exception(e)
 
-            # Mark the queue task as done
             self.write_queues[file_path].task_done()
 
     def _write_arrow_to_parquet(self, file_path, data_table, append):
