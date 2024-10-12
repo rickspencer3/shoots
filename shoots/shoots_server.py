@@ -81,7 +81,6 @@ class ShootsServer(flight.FlightServerBase):
         
         self.write_queues = {}
         self.queue_locks = {}
-        self.executor = ThreadPoolExecutor(max_workers=10)
 
     def generate_admin_jwt(self):
         if self.secret:
@@ -253,6 +252,7 @@ class ShootsServer(flight.FlightServerBase):
                 self._enqueue_write_request(file_path=file_path,
                                         data_table=data_chunk.data,
                                         append = parquet_exists)
+                
                 logger.debug(f"chunk {chunks} enqueued")
                 parquet_exists = True
                 
@@ -272,56 +272,40 @@ class ShootsServer(flight.FlightServerBase):
         if mode not in put_modes:
             raise flight.FlightServerError(f"put mode is {mode}, must be one of {put_modes}")
 
-    # this function is necessary to be the chokepoint
     def _enqueue_write_request(self, file_path, data_table, append):
         """
-        Enqueues a write request for a given file and waits for the result.
+        Enqueues a write request and processes it synchronously. The client will
+        block and wait for the result of the write operation.
         """
-        # Create a queue and lock for the file_path if it doesn't exist
         if file_path not in self.write_queues:
             self.write_queues[file_path] = queue.Queue()
             self.queue_locks[file_path] = threading.Lock()
-            logger.debug(f"queue and lock for {file_path} created")
- 
-        # Create a Future object for the result
-        future = Future()
-
-        # Enqueue the write request (data_table and future)
+            
+        future = Future()  # Create a Future to track the result of the write operation
         self.write_queues[file_path].put((data_table, append, future))
-        logger.debug(f"data enqueud at position {self.write_queues[file_path].qsize()}")
-        
-        # Trigger queue processing
-        self._process_write_queue_async(file_path)
 
-        # Wait for the result of the future before returning (makes the call synchronous)
-        return future.result()  # This will block until the write completes or fails
+        # Directly process the queue synchronously (relying on Flight's threading model)
+        self._process_write_queue(file_path)
 
-    def _process_write_queue_async(self, file_path):
-        """
-        Processes the write queue for a specific file asynchronously using a thread pool.
-        Ensures that only one thread is processing the queue for a given file.
-        """
-        # Acquire the lock for this file_path to ensure only one processing thread
-        # is active at a time for the same file.
-        with self.queue_locks[file_path]:
-            # Submit the queue processing to the thread pool executor
-            if not self.write_queues[file_path].empty():
-                self.executor.submit(self._process_write_queue, file_path)
-                logger.debug(f"_process_write_queue task added")
+        # Block the client here by waiting for the result of the Future
+        return future.result()
 
     def _process_write_queue(self, file_path):
         """
         Processes all pending write requests in the queue for the given file_path.
+        Ensures that only one thread can write to the file at a time using a lock.
         """
         while not self.write_queues[file_path].empty():
             data_table, append, future = self.write_queues[file_path].get()
 
-
             try:
+                # Lock the file to ensure that only one thread writes at a time
                 with self.queue_locks[file_path]:
+                    # Perform the actual file write operation
                     self._write_arrow_to_parquet(file_path=file_path, data_table=data_table, append=append)
-                    # If the write succeeds, set the result on the future
-                    future.set_result("Write successful")
+                    
+                # If the write succeeds, set the result on the future
+                future.set_result("Write successful")
 
             except Exception as e:
                 # If there's an error, set the exception on the future

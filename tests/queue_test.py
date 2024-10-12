@@ -6,12 +6,9 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import queue
-from shoots import ShootsServer, ShootsClient, PutMode
+from shoots import ShootsServer, ShootsClient, PutMode, BucketDeleteMode
 from pyarrow.flight import Location
 import logging
-
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-
 
 class QueueTest(unittest.TestCase):
     def setUp(self):
@@ -22,6 +19,8 @@ class QueueTest(unittest.TestCase):
         self.client2 = ShootsClient("localhost", 8085)
         self.client3 = ShootsClient("localhost", 8085)
         
+    def tearDown(self):
+        self.client1.delete_bucket("test_bucket", BucketDeleteMode.DELETE_CONTENTS)
 
     def test_concurrent_large_writes_with_delay(self):
         """
@@ -59,7 +58,6 @@ class QueueTest(unittest.TestCase):
         for thread in threads:
             thread.join()
 
-        time.sleep(5)
         result_dataframe = self.client1.get('test_large_write', bucket="test_bucket")
         # Verify that the total number of rows matches the expected sum
         expected_num_rows = num_rows * 3
@@ -72,6 +70,7 @@ class QueueTest(unittest.TestCase):
         pd.testing.assert_frame_equal(result_dataframe.sort_values('column1').reset_index(drop=True), 
                                       expected_data,
                                       check_like=True)
+        
 
 if __name__ == '__main__':
     unittest.main()
