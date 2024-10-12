@@ -38,29 +38,23 @@ class QueueTest(unittest.TestCase):
         dataframe3 = pd.DataFrame({'column1': range(2 * num_rows, 3 * num_rows)})
 
         # Function to simulate each client writing its dataframe
-        def client_write(client, dataframe):
-            client.put(
+        def client_write(write_client, read_client, dataframe):
+            write_client.put(
                 name='test_large_write',
                 dataframe=dataframe,
                 mode=PutMode.APPEND,
                 bucket='test_bucket',
                 batch_size=100000  # Adjust as needed
             )
-
-        def client_read(client):
-            client.get('test_large_write', bucket="test_bucket")
-            client.get('test_large_write', bucket="test_bucket",
-                       sql = "select * from test_large_write limit 1")            
+            read_client.get('test_large_write', bucket="test_bucket")
+            read_client.get('test_large_write', bucket="test_bucket",
+                       sql = "select * from test_large_write limit 1")          
 
         # Create threads for each client
         threads = [
-            threading.Thread(target=client_write, args=(self.write_client1, dataframe1)),
-            threading.Thread(target=client_write, args=(self.write_client2, dataframe2)),
-            threading.Thread(target=client_write, args=(self.write_client3, dataframe3)),
-            threading.Thread(target=client_write, args=(self.read_client1)),
-            threading.Thread(target=client_write, args=(self.read_client2)),
-            threading.Thread(target=client_write, args=(self.read_client3))
-        ]
+            threading.Thread(target=client_write, args=(self.write_client1, self.read_client1,  dataframe1)),
+            threading.Thread(target=client_write, args=(self.write_client2, self.read_client2, dataframe2)),
+            threading.Thread(target=client_write, args=(self.write_client3, self.read_client3, dataframe3)),]
 
         # Start all threads
         for thread in threads:
