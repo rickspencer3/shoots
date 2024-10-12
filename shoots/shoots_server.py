@@ -232,13 +232,7 @@ class ShootsServer(flight.FlightServerBase):
         # In order to avoid calling os.path.exists for each written chunk
         # it's necessary to track whether the target file has been created yet
         # in the code that calls enqueue_write_request
-        parquet_exists = os.path.exists(file_path)
-        if mode == "error" and parquet_exists:
-            self._raise_dataframe_exists_error(name)
-        
-        if mode == "replace" and os.path.exists(file_path):
-            os.remove(file_path)
-            parquet_exists = False
+        self._handle_put_modes(name, mode, file_path)
 
         logger.debug(f"do_put() called")
         chunks = 0
@@ -252,7 +246,7 @@ class ShootsServer(flight.FlightServerBase):
                 logger.debug(f"enqueing chunck {chunks}")
                 self._enqueue_write_request(file_path=file_path,
                                         data_table=data_chunk.data,
-                                        append = parquet_exists)
+                                        mode = mode)
                 
                 logger.debug(f"chunk {chunks} enqueued")
                 parquet_exists = True
@@ -262,6 +256,14 @@ class ShootsServer(flight.FlightServerBase):
             except StopIteration:
                 break
         logger.debug(f"do_put() returning")
+
+    def _handle_put_modes(self, name, mode, file_path):
+        parquet_exists = os.path.exists(file_path)
+        if mode == "error" and parquet_exists:
+            self._raise_dataframe_exists_error(name)
+        
+        if mode == "replace" and os.path.exists(file_path):
+            os.remove(file_path)
 
     def _raise_dataframe_exists_error(self, name):
         exception = {"type":"FileExistsError",
@@ -274,7 +276,7 @@ class ShootsServer(flight.FlightServerBase):
         if mode not in put_modes:
             raise flight.FlightServerError(f"put mode is {mode}, must be one of {put_modes}")
 
-    def _enqueue_write_request(self, file_path, data_table, append):
+    def _enqueue_write_request(self, file_path, data_table, mode):
         """
         Enqueues a write request and processes it synchronously. The client will
         block and wait for the result of the write operation.
@@ -284,7 +286,7 @@ class ShootsServer(flight.FlightServerBase):
             self.queue_locks[file_path] = threading.Lock()
             
         future = Future()  # Create a Future to track the result of the write operation
-        self.write_queues[file_path].put((data_table, append, future))
+        self.write_queues[file_path].put((data_table, mode, future))
 
         # Directly process the queue synchronously (relying on Flight's threading model)
         self._process_write_queue(file_path)
@@ -298,13 +300,13 @@ class ShootsServer(flight.FlightServerBase):
         Ensures that only one thread can write to the file at a time using a lock.
         """
         while not self.write_queues[file_path].empty():
-            data_table, append, future = self.write_queues[file_path].get()
+            data_table, mode, future = self.write_queues[file_path].get()
 
             try:
                 # Lock the file to ensure that only one thread writes at a time
                 with self.queue_locks[file_path]:
                     # Perform the actual file write operation
-                    self._write_arrow_to_parquet(file_path=file_path, data_table=data_table, append=append)
+                    self._write_arrow_to_parquet(file_path=file_path, data_table=data_table, mode=mode)
                     
                 # If the write succeeds, set the result on the future
                 future.set_result("Write successful")
@@ -315,17 +317,17 @@ class ShootsServer(flight.FlightServerBase):
 
             self.write_queues[file_path].task_done()
 
-    def _write_arrow_to_parquet(self, file_path, data_table, append):
+    def _write_arrow_to_parquet(self, file_path, data_table, mode):
         """
         Writes the given Arrow table to a Parquet file at the specified path.
         """
         try:
-            # Convert the Arrow table to a Pandas DataFrame, which is required by fastparquet
             df = data_table.to_pandas()
-
-            # Perform the write operation with fastparquet
-            fp.write(file_path, df, append=append)
-
+            if os.path.exists(file_path):
+                    fp.write(file_path, df, append=True)
+            else:
+                fp.write(file_path, df)
+                
         except FileNotFoundError as e:
             # Handle a missing file scenario, translate it into a FlightServerError
             exception = {
@@ -520,16 +522,10 @@ class ShootsServer(flight.FlightServerBase):
         table = self._get_arrow_table_from_sql(source, source_file_path, sql)
         target_rows = table.num_rows
 
-        # In order to avoid calling os.path.exists for each written chunk
-        # it's necessary to track whether the target file has been created yet
-        # in the code that calls enqueue_write_request
-        parquet_exists = os.path.exists(target_file_path)
-        append = False
-        if mode == "append" and parquet_exists:
-            append = True
+        self._handle_put_modes(target, mode, target_file_path)
         self._enqueue_write_request(file_path=target_file_path,
                                 data_table=table,
-                                append=append)
+                                mode=mode)
         
         return self._flight_result_from_dict({"target_rows":target_rows})
     
@@ -558,19 +554,11 @@ class ShootsServer(flight.FlightServerBase):
         table = pa.Table.from_pandas(df_target, preserve_index=False)
         target_file_path = self._create_file_path(target, target_bucket)
         
-        # In order to avoid calling os.path.exists for each written chunk
-        # it's necessary to track whether the target file has been created yet
-        # in the code that calls enqueue_write_request
-        parquet_exists = os.path.exists(target_file_path)
-        if mode == "error" and parquet_exists:
-            self._raise_dataframe_exists_error(target)
-        else:
-            append = False
-            if mode == "append" and parquet_exists:
-                append = True
-            self._enqueue_write_request(file_path=target_file_path,
-                                    data_table=table,
-                                    append=append)
+        self._handle_put_modes(target, mode, target_file_path)
+
+        self._enqueue_write_request(file_path=target_file_path,
+                                data_table=table,
+                                mode=mode)
 
         return self._flight_result_from_dict({"source_rows":source_rows,
                                               "target_rows":target_rows})
