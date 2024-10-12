@@ -9,6 +9,7 @@ import queue
 from shoots import ShootsServer, ShootsClient, PutMode, BucketDeleteMode
 from pyarrow.flight import Location
 import logging
+# logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 class QueueTest(unittest.TestCase):
     def setUp(self):

@@ -240,6 +240,7 @@ class ShootsServer(flight.FlightServerBase):
             os.remove(file_path)
             parquet_exists = False
 
+        logger.debug(f"do_put() called")
         chunks = 0
         while True:
             try:
@@ -248,7 +249,7 @@ class ShootsServer(flight.FlightServerBase):
                 chunks += 1
                 if data_chunk is None:
                     break
-                
+                logger.debug(f"enqueing chunck {chunks}")
                 self._enqueue_write_request(file_path=file_path,
                                         data_table=data_chunk.data,
                                         append = parquet_exists)
@@ -260,6 +261,7 @@ class ShootsServer(flight.FlightServerBase):
             # that the reader has no more data
             except StopIteration:
                 break
+        logger.debug(f"do_put() returning")
 
     def _raise_dataframe_exists_error(self, name):
         exception = {"type":"FileExistsError",
