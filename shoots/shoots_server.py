@@ -1,6 +1,6 @@
 import os
 import pyarrow as pa
-from pyarrow import flight
+from pyarrow import flight, ArrowInvalid
 import pyarrow.parquet as pq
 import fastparquet as fp
 from datafusion import SessionContext
@@ -11,7 +11,7 @@ import argparse
 import jwt
 import datetime
 import queue
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import Future
 import logging
 
 logger = logging.getLogger(__name__)
@@ -155,7 +155,12 @@ class ShootsServer(flight.FlightServerBase):
                 return flight.RecordBatchStream(table)
             
             else:
-                table = pq.read_table(file_path)
+                try:
+                    table = pq.read_table(file_path)
+                except ArrowInvalid as e:
+                    msg = f"Failed to read from {file_path}. Most likely the file is open by another proecess."
+                    exception = {"type":"ShootsIOError", "message":msg}
+                    raise flight.FlightServerError(extra_info = json.dumps(exception))
                 return flight.RecordBatchStream(table)
 
         except flight.FlightServerError as e:
@@ -171,6 +176,12 @@ class ShootsServer(flight.FlightServerBase):
             result = ctx.sql(sql_query)
             table = result.to_arrow_table()
             return table
+        
+        except ArrowInvalid as e:
+                    msg = f"Failed to read from {file_path}. Most likely the file is open by another proecess."
+                    exception = {"type":"ShootsIOError", "message":msg}
+                    raise flight.FlightServerError(extra_info = json.dumps(exception))
+        
         except Exception as e:
             if "DataFusion error" in str(e):
                 exception = {"type":"DataFusionError", "message":str(e)}
