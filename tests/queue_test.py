@@ -16,12 +16,15 @@ class QueueTest(unittest.TestCase):
         # Setup server and client as specified
         location = Location.for_grpc_tcp("localhost", 8085)
         self.server = ShootsServer(location, "queuebucket")
-        self.client1 = ShootsClient("localhost", 8085)
-        self.client2 = ShootsClient("localhost", 8085)
-        self.client3 = ShootsClient("localhost", 8085)
-        
+        self.write_client1 = ShootsClient("localhost", 8085)
+        self.write_client2 = ShootsClient("localhost", 8085)
+        self.write_client3 = ShootsClient("localhost", 8085)
+        self.read_client1 = ShootsClient("localhost", 8085)
+        self.read_client2 = ShootsClient("localhost", 8085)
+        self.read_client3 = ShootsClient("localhost", 8085)
+
     def tearDown(self):
-        self.client1.delete_bucket("test_bucket", BucketDeleteMode.DELETE_CONTENTS)
+        self.write_client1.delete_bucket("test_bucket", BucketDeleteMode.DELETE_CONTENTS)
 
     def test_concurrent_large_writes_with_delay(self):
         """
@@ -44,11 +47,19 @@ class QueueTest(unittest.TestCase):
                 batch_size=100000  # Adjust as needed
             )
 
+        def client_read(client):
+            client.get('test_large_write', bucket="test_bucket")
+            client.get('test_large_write', bucket="test_bucket",
+                       sql = "select * from test_large_write limit 1")            
+
         # Create threads for each client
         threads = [
-            threading.Thread(target=client_write, args=(self.client1, dataframe1)),
-            threading.Thread(target=client_write, args=(self.client2, dataframe2)),
-            threading.Thread(target=client_write, args=(self.client3, dataframe3))
+            threading.Thread(target=client_write, args=(self.write_client1, dataframe1)),
+            threading.Thread(target=client_write, args=(self.write_client2, dataframe2)),
+            threading.Thread(target=client_write, args=(self.write_client3, dataframe3)),
+            threading.Thread(target=client_write, args=(self.read_client1)),
+            threading.Thread(target=client_write, args=(self.read_client2)),
+            threading.Thread(target=client_write, args=(self.read_client3))
         ]
 
         # Start all threads
@@ -59,7 +70,7 @@ class QueueTest(unittest.TestCase):
         for thread in threads:
             thread.join()
 
-        result_dataframe = self.client1.get('test_large_write', bucket="test_bucket")
+        result_dataframe = self.write_client1.get('test_large_write', bucket="test_bucket")
         # Verify that the total number of rows matches the expected sum
         expected_num_rows = num_rows * 3
         actual_num_rows = len(result_dataframe)
