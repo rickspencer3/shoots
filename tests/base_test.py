@@ -196,7 +196,7 @@ class ShootsTestBase(unittest.TestCase):
         self.assertEqual(res["target_rows"], 1000)
 
         df_thousands = self.shoots_client.get("thousand")
-        self.assertEqual(df_thousands.shape[0], 1000)    
+        self.assertEqual(df_thousands.shape[0], 1000, "should be 1000 rows")    
      
         self.shoots_client.delete(name)
         self.shoots_client.delete("thousand")
@@ -256,7 +256,7 @@ class ShootsTestBase(unittest.TestCase):
                              source_bucket=source_bucket,
                              target_bucket=target_bucket)
         
-        self.assertEqual(res["target_rows"], 1000)
+        self.assertEqual(res["target_rows"], 1000, f"actual rows should be 1000")
 
         df_thousands = self.shoots_client.get("thousand",bucket=target_bucket)
         self.assertEqual(df_thousands.shape[0], 1000)    

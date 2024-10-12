@@ -10,6 +10,11 @@ import threading
 import argparse
 import jwt
 import datetime
+import queue
+from concurrent.futures import Future, ThreadPoolExecutor
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     from .jwt_server_auth import JWTServerAuthHandler, JWTMiddleware
@@ -73,6 +78,9 @@ class ShootsServer(flight.FlightServerBase):
                                    verify_client=False,
                                    middleware=middleware,
                                    *args, **kwargs)
+        
+        self.write_queues = {}
+        self.queue_locks = {}
 
     def generate_admin_jwt(self):
         if self.secret:
@@ -223,7 +231,7 @@ class ShootsServer(flight.FlightServerBase):
         
         # In order to avoid calling os.path.exists for each written chunk
         # it's necessary to track whether the target file has been created yet
-        # in the code that calls _write_arrow_to_parquet
+        # in the code that calls enqueue_write_request
         parquet_exists = os.path.exists(file_path)
         if mode == "error" and parquet_exists:
             self._raise_dataframe_exists_error(name)
@@ -232,22 +240,28 @@ class ShootsServer(flight.FlightServerBase):
             os.remove(file_path)
             parquet_exists = False
 
+        logger.debug(f"do_put() called")
         chunks = 0
         while True:
             try:
                 data_chunk = reader.read_chunk()
+                logger.debug(f"chunck {chunks} read")
                 chunks += 1
                 if data_chunk is None:
                     break
-                self._write_arrow_to_parquet(file_path=file_path,
+                logger.debug(f"enqueing chunck {chunks}")
+                self._enqueue_write_request(file_path=file_path,
                                         data_table=data_chunk.data,
                                         append = parquet_exists)
+                
+                logger.debug(f"chunk {chunks} enqueued")
                 parquet_exists = True
                 
             # the Apache Arrow API uses an exception for signaling
             # that the reader has no more data
             except StopIteration:
                 break
+        logger.debug(f"do_put() returning")
 
     def _raise_dataframe_exists_error(self, name):
         exception = {"type":"FileExistsError",
@@ -260,24 +274,66 @@ class ShootsServer(flight.FlightServerBase):
         if mode not in put_modes:
             raise flight.FlightServerError(f"put mode is {mode}, must be one of {put_modes}")
 
-    # this function is necessary to be the chokepoint
-    def _write_arrow_to_parquet(self, *, file_path, data_table, append):
-        # In order to avoid calling os.path.exists for each written chunk
-        # it's necessary to track whether the target file has been created yet
-        # in the code that calls _write_arrow_to_parquet not inside this function.
-        # fp.write() will throw FileNotFoundError if, for example, a different
-        # process comes along and deletes the file while chunks are being written.
-        # Of course, this needs to be converted to a FlightServerError to be passed back to the client
-        # over the grpc interace, and then will be converted abck to a FileNotFoundError
-        # in the client (assuming the shoots client is being used)
+    def _enqueue_write_request(self, file_path, data_table, append):
+        """
+        Enqueues a write request and processes it synchronously. The client will
+        block and wait for the result of the write operation.
+        """
+        if file_path not in self.write_queues:
+            self.write_queues[file_path] = queue.Queue()
+            self.queue_locks[file_path] = threading.Lock()
+            
+        future = Future()  # Create a Future to track the result of the write operation
+        self.write_queues[file_path].put((data_table, append, future))
+
+        # Directly process the queue synchronously (relying on Flight's threading model)
+        self._process_write_queue(file_path)
+
+        # Block the client here by waiting for the result of the Future
+        return future.result()
+
+    def _process_write_queue(self, file_path):
+        """
+        Processes all pending write requests in the queue for the given file_path.
+        Ensures that only one thread can write to the file at a time using a lock.
+        """
+        while not self.write_queues[file_path].empty():
+            data_table, append, future = self.write_queues[file_path].get()
+
+            try:
+                # Lock the file to ensure that only one thread writes at a time
+                with self.queue_locks[file_path]:
+                    # Perform the actual file write operation
+                    self._write_arrow_to_parquet(file_path=file_path, data_table=data_table, append=append)
+                    
+                # If the write succeeds, set the result on the future
+                future.set_result("Write successful")
+
+            except Exception as e:
+                # If there's an error, set the exception on the future
+                future.set_exception(e)
+
+            self.write_queues[file_path].task_done()
+
+    def _write_arrow_to_parquet(self, file_path, data_table, append):
+        """
+        Writes the given Arrow table to a Parquet file at the specified path.
+        """
         try:
-            fp.write(file_path, data_table.to_pandas(), append=append)
+            # Convert the Arrow table to a Pandas DataFrame, which is required by fastparquet
+            df = data_table.to_pandas()
+
+            # Perform the write operation with fastparquet
+            fp.write(file_path, df, append=append)
+
         except FileNotFoundError as e:
-                exception = {"type":"FileNotFoundError",
-                             "message":f"Attempt to append to missing dataframe {file_path}."}
-                raise flight.FlightServerError(extra_info=json.dumps(exception))
-
-
+            # Handle a missing file scenario, translate it into a FlightServerError
+            exception = {
+                "type": "FileNotFoundError",
+                "message": f"Attempt to append to missing dataframe {file_path}."
+            }
+            raise flight.FlightServerError(extra_info=json.dumps(exception))
+        
     def list_flights(self, context, criteria):
         """
         Lists available dataframes based on given criteria.
@@ -466,12 +522,12 @@ class ShootsServer(flight.FlightServerBase):
 
         # In order to avoid calling os.path.exists for each written chunk
         # it's necessary to track whether the target file has been created yet
-        # in the code that calls _write_arrow_to_parquet
+        # in the code that calls enqueue_write_request
         parquet_exists = os.path.exists(target_file_path)
         append = False
         if mode == "append" and parquet_exists:
             append = True
-        self._write_arrow_to_parquet(file_path=target_file_path,
+        self._enqueue_write_request(file_path=target_file_path,
                                 data_table=table,
                                 append=append)
         
@@ -504,7 +560,7 @@ class ShootsServer(flight.FlightServerBase):
         
         # In order to avoid calling os.path.exists for each written chunk
         # it's necessary to track whether the target file has been created yet
-        # in the code that calls _write_arrow_to_parquet
+        # in the code that calls enqueue_write_request
         parquet_exists = os.path.exists(target_file_path)
         if mode == "error" and parquet_exists:
             self._raise_dataframe_exists_error(target)
@@ -512,7 +568,7 @@ class ShootsServer(flight.FlightServerBase):
             append = False
             if mode == "append" and parquet_exists:
                 append = True
-            self._write_arrow_to_parquet(file_path=target_file_path,
+            self._enqueue_write_request(file_path=target_file_path,
                                     data_table=table,
                                     append=append)
 
