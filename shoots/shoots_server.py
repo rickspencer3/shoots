@@ -156,7 +156,11 @@ class ShootsServer(flight.FlightServerBase):
             
             else:
                 try:
-                    table = pq.read_table(file_path)
+                    logger.debug(f"enqueing read from {file_path}")
+                    table = self._enqueue_io_request(self._read_arrow_from_parquet,
+                                                     args={"file_path":file_path})
+                    return flight.RecordBatchStream(table)
+                    
                 except ArrowInvalid as e:
                     msg = f"Failed to read from {file_path}. Most likely the file is open by another proecess."
                     exception = {"type":"ShootsIOError", "message":msg}
@@ -176,7 +180,6 @@ class ShootsServer(flight.FlightServerBase):
                                             args={"name":name,
                                                   "file_path":file_path,
                                                   "sql_query":sql_query})
-        #self._read_arrow_from_parquet(name, file_path, sql_query)
         
         except ArrowInvalid as e:
                     msg = f"Failed to read from {file_path}. Most likely the file is open by another proecess."
@@ -190,11 +193,16 @@ class ShootsServer(flight.FlightServerBase):
             else:
                 raise e
 
-    def _read_arrow_from_parquet(self, name, file_path, sql_query):
-        ctx = SessionContext()
-        ctx.register_parquet(name, file_path)
-        result = ctx.sql(sql_query)
-        table = result.to_arrow_table()
+    def _read_arrow_from_parquet(self, name=None, file_path=None, sql_query=None):
+        logger.debug(f"reading from parquest with {(name, file_path,sql_query)}")
+        if sql_query is None:
+            table = pq.read_table(file_path)
+            logger.debug(f"read table from {file_path}")
+        else:
+            ctx = SessionContext()
+            ctx.register_parquet(name, file_path)
+            result = ctx.sql(sql_query)
+            table = result.to_arrow_table()
         return table
         
     def do_put(self, context, descriptor, reader, writer):
@@ -308,7 +316,7 @@ class ShootsServer(flight.FlightServerBase):
             
         future = Future()  # Create a Future to track the result of the write operation
         self.io_queues[file_path].put((function, args, future))
-
+        logger.debug(f"{str(function)} added to i/o queue. queue length: {self.io_queues[file_path].qsize()}")
         # Directly process the queue synchronously (relying on Flight's threading model)
         self._process_io_queue(file_path)
 
@@ -322,7 +330,7 @@ class ShootsServer(flight.FlightServerBase):
         """
         while not self.io_queues[file_path].empty():
             function, args, future = self.io_queues[file_path].get()
-
+            logger.debug(f"processing i/o queue for {file_path}")
             try:
                 # Lock the file to ensure that only one thread writes at a time
                 with self.queue_locks[file_path]:
