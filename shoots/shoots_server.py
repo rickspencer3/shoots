@@ -151,7 +151,10 @@ class ShootsServer(flight.FlightServerBase):
             
             if "sql" in ticket_info:
                 sql_query = ticket_info["sql"]
-                table = self._get_arrow_table_from_sql(name, file_path, sql_query)
+                table = self._enqueue_io_request(self._read_arrow_from_parquet,
+                                        args={"name":name, 
+                                              "file_path":file_path,
+                                              "sql_query":sql_query})
                 return flight.RecordBatchStream(table)
             
             else:
@@ -199,10 +202,16 @@ class ShootsServer(flight.FlightServerBase):
             table = pq.read_table(file_path)
             logger.debug(f"read table from {file_path}")
         else:
-            ctx = SessionContext()
-            ctx.register_parquet(name, file_path)
-            result = ctx.sql(sql_query)
-            table = result.to_arrow_table()
+            try:
+                ctx = SessionContext()
+                ctx.register_parquet(name, file_path)
+                result = ctx.sql(sql_query)
+                table = result.to_arrow_table()
+                   
+            except Exception as e:
+                if "DataFusion error" in str(e):
+                    exception = {"type":"DataFusionError", "message":str(e)}
+                    raise flight.FlightServerError(extra_info = json.dumps(exception))
         return table
         
     def do_put(self, context, descriptor, reader, writer):

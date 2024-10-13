@@ -344,4 +344,4 @@ class ShootsTestBase(unittest.TestCase):
         sql = "SELECT * FROM 100x"
         with self.assertRaises(DataFusionError):
             self.shoots_client.get("100x", sql)
-        self.shoots_client.delete("100x")        
+        self.shoots_client.delete("100x")    

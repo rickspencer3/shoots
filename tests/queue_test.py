@@ -35,14 +35,13 @@ class QueueTest(unittest.TestCase):
         dataframe2 = pd.DataFrame({'column1': range(num_rows, 2 * num_rows)})
         dataframe3 = pd.DataFrame({'column1': range(2 * num_rows, 3 * num_rows)})
 
-        # Function to simulate each client writing its dataframe
         def client_write(write_client, dataframe):
             write_client.put(
                 name='test_large_write',
                 dataframe=dataframe,
                 mode=PutMode.APPEND,
                 bucket='test_bucket',
-                batch_size=100000  # Adjust as needed
+                batch_size=100000
                 )
 
         def multi_bucket_job():
@@ -57,25 +56,22 @@ class QueueTest(unittest.TestCase):
         def read_job():
             for i in range(0,500):
                 try:
-                    # read_client.get('test_large_write', bucket="test_bucket")
                     if i % 2:
                         sql = "select * from test_large_write limit 1"
                     else:
                         sql = None
                     self.read_client.get('test_large_write', bucket="test_bucket",
-                            sql=sql) 
+                            sql=sql)
                 except FileNotFoundError as e:
                     pass # most likely the read job simply got to the file first
 
-
-        # Create threads for each client
         threads = [
             threading.Thread(target=client_write, args=(self.write_client1, dataframe1)),
             threading.Thread(target=client_write, args=(self.write_client2, dataframe2)),
             threading.Thread(target=client_write, args=(self.write_client3, dataframe3)),
             threading.Thread(target=read_job),
             threading.Thread(target=multi_bucket_job)]
-        # Start all threads
+        
         for thread in threads:
             thread.start()
 
