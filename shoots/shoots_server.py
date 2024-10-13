@@ -79,7 +79,7 @@ class ShootsServer(flight.FlightServerBase):
                                    middleware=middleware,
                                    *args, **kwargs)
         
-        self.write_queues = {}
+        self.io_queues = {}
         self.queue_locks = {}
 
     def generate_admin_jwt(self):
@@ -255,9 +255,10 @@ class ShootsServer(flight.FlightServerBase):
                 if data_chunk is None:
                     break
                 logger.debug(f"enqueing chunck {chunks}")
-                self._enqueue_write_request(file_path=file_path,
-                                        data_table=data_chunk.data,
-                                        mode = mode)
+                self._enqueue_io_request(function=self._write_arrow_to_parquet,
+                                        args={"data_table":data_chunk.data,
+                                         "file_path":file_path,
+                                        "mode":mode})
                 
                 logger.debug(f"chunk {chunks} enqueued")
                 parquet_exists = True
@@ -287,37 +288,38 @@ class ShootsServer(flight.FlightServerBase):
         if mode not in put_modes:
             raise flight.FlightServerError(f"put mode is {mode}, must be one of {put_modes}")
 
-    def _enqueue_write_request(self, file_path, data_table, mode):
+    def _enqueue_io_request(self, function, args):
         """
         Enqueues a write request and processes it synchronously. The client will
         block and wait for the result of the write operation.
         """
-        if file_path not in self.write_queues:
-            self.write_queues[file_path] = queue.Queue()
+        file_path = args["file_path"]
+        if file_path not in self.io_queues:
+            self.io_queues[file_path] = queue.Queue()
             self.queue_locks[file_path] = threading.Lock()
             
         future = Future()  # Create a Future to track the result of the write operation
-        self.write_queues[file_path].put((data_table, mode, future))
+        self.io_queues[file_path].put((function, args, future))
 
         # Directly process the queue synchronously (relying on Flight's threading model)
-        self._process_write_queue(file_path)
+        self._process_io_queue(file_path)
 
         # Block the client here by waiting for the result of the Future
         return future.result()
 
-    def _process_write_queue(self, file_path):
+    def _process_io_queue(self, file_path):
         """
         Processes all pending write requests in the queue for the given file_path.
         Ensures that only one thread can write to the file at a time using a lock.
         """
-        while not self.write_queues[file_path].empty():
-            data_table, mode, future = self.write_queues[file_path].get()
+        while not self.io_queues[file_path].empty():
+            function, args, future = self.io_queues[file_path].get()
 
             try:
                 # Lock the file to ensure that only one thread writes at a time
                 with self.queue_locks[file_path]:
                     # Perform the actual file write operation
-                    self._write_arrow_to_parquet(file_path=file_path, data_table=data_table, mode=mode)
+                    function(**args)
                     
                 # If the write succeeds, set the result on the future
                 future.set_result("Write successful")
@@ -326,7 +328,7 @@ class ShootsServer(flight.FlightServerBase):
                 # If there's an error, set the exception on the future
                 future.set_exception(e)
 
-            self.write_queues[file_path].task_done()
+            self.io_queues[file_path].task_done()
 
     def _write_arrow_to_parquet(self, file_path, data_table, mode):
         """
@@ -534,9 +536,10 @@ class ShootsServer(flight.FlightServerBase):
         target_rows = table.num_rows
 
         self._handle_put_modes(target, mode, target_file_path)
-        self._enqueue_write_request(file_path=target_file_path,
-                                data_table=table,
-                                mode=mode)
+        self._enqueue_io_request(function=self._write_arrow_to_parquet,
+                                 args = {"file_path":target_file_path,
+                                "data_table":table,
+                                "mode":mode})
         
         return self._flight_result_from_dict({"target_rows":target_rows})
     
@@ -567,9 +570,10 @@ class ShootsServer(flight.FlightServerBase):
         
         self._handle_put_modes(target, mode, target_file_path)
 
-        self._enqueue_write_request(file_path=target_file_path,
-                                data_table=table,
-                                mode=mode)
+        self._enqueue_io_request(function=self._write_arrow_to_parquet,
+                                args={"file_path":target_file_path,
+                                "data_table":table,
+                                "mode":mode})
 
         return self._flight_result_from_dict({"source_rows":source_rows,
                                               "target_rows":target_rows})
