@@ -8,7 +8,7 @@ import pyarrow.parquet as pq
 import queue
 from shoots import ShootsServer, ShootsClient, PutMode, BucketDeleteMode
 from pyarrow.flight import Location
-import logging
+# import logging
 # logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 class QueueTest(unittest.TestCase):
@@ -19,9 +19,7 @@ class QueueTest(unittest.TestCase):
         self.write_client1 = ShootsClient("localhost", 8085)
         self.write_client2 = ShootsClient("localhost", 8085)
         self.write_client3 = ShootsClient("localhost", 8085)
-        self.read_client1 = ShootsClient("localhost", 8085)
-        self.read_client2 = ShootsClient("localhost", 8085)
-        self.read_client3 = ShootsClient("localhost", 8085)
+        self.read_client = ShootsClient("localhost", 8085)
 
     def tearDown(self):
         self.write_client1.delete_bucket("test_bucket", BucketDeleteMode.DELETE_CONTENTS)
@@ -38,7 +36,7 @@ class QueueTest(unittest.TestCase):
         dataframe3 = pd.DataFrame({'column1': range(2 * num_rows, 3 * num_rows)})
 
         # Function to simulate each client writing its dataframe
-        def client_write(write_client, read_client, dataframe):
+        def client_write(write_client, dataframe):
             write_client.put(
                 name='test_large_write',
                 dataframe=dataframe,
@@ -46,16 +44,27 @@ class QueueTest(unittest.TestCase):
                 bucket='test_bucket',
                 batch_size=100000  # Adjust as needed
             )
-            # read_client.get('test_large_write', bucket="test_bucket")
-            read_client.get('test_large_write', bucket="test_bucket",
-                       sql = "select * from test_large_write limit 1")          
+        
+        def read_job():
+            for i in range(0,500):
+                try:
+                    # read_client.get('test_large_write', bucket="test_bucket")
+                    if i % 2:
+                        sql = "select * from test_large_write limit 1"
+                    else:
+                        sql = None
+                    self.read_client.get('test_large_write', bucket="test_bucket",
+                            sql=sql) 
+                except FileNotFoundError as e:
+                    pass # most likely the read job simply got to the file first
+
 
         # Create threads for each client
         threads = [
-            threading.Thread(target=client_write, args=(self.write_client1, self.read_client1,  dataframe1)),
-            threading.Thread(target=client_write, args=(self.write_client2, self.read_client2, dataframe2)),
-            threading.Thread(target=client_write, args=(self.write_client3, self.read_client3, dataframe3)),]
-
+            threading.Thread(target=client_write, args=(self.write_client1, dataframe1)),
+            threading.Thread(target=client_write, args=(self.write_client2, dataframe2)),
+            threading.Thread(target=client_write, args=(self.write_client3, dataframe3)),
+            threading.Thread(target=read_job)]
         # Start all threads
         for thread in threads:
             thread.start()
