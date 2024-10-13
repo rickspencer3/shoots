@@ -176,26 +176,6 @@ class ShootsServer(flight.FlightServerBase):
         except Exception as e:
             raise flight.FlightServerError(extra_info=str(e))
 
-
-    def _get_arrow_table_from_sql(self, name, file_path, sql_query):
-        try:
-            return self._enqueue_io_request(self._read_arrow_from_parquet,
-                                            args={"name":name,
-                                                  "file_path":file_path,
-                                                  "sql_query":sql_query})
-        
-        except ArrowInvalid as e:
-                    msg = f"Failed to read from {file_path}. Most likely the file is open by another proecess."
-                    exception = {"type":"ShootsIOError", "message":msg}
-                    raise flight.FlightServerError(extra_info = json.dumps(exception))
-        
-        except Exception as e:
-            if "DataFusion error" in str(e):
-                exception = {"type":"DataFusionError", "message":str(e)}
-                raise flight.FlightServerError(extra_info = json.dumps(exception))
-            else:
-                raise e
-
     def _read_arrow_from_parquet(self, name=None, file_path=None, sql_query=None):
         logger.debug(f"reading from parquest with {(name, file_path,sql_query)}")
         if sql_query is None:
@@ -614,16 +594,6 @@ class ShootsServer(flight.FlightServerBase):
 
         return self._flight_result_from_dict({"source_rows":source_rows,
                                               "target_rows":target_rows})
-
-    def _load_dataframe_from_file(self, source, source_bucket):
-        file_name = self._create_file_path(source, source_bucket)
-        if not os.path.exists(file_name):
-            exception = {"type":"FileNotFoundError",
-                "message":f"Dataframe {source} not found"}
-            raise flight.FlightServerError(extra_info=json.dumps(exception))
-        table = pq.read_table(file_name)
-        df_source = table.to_pandas()
-        return df_source
 
     def list_actions(self, context):
         """
