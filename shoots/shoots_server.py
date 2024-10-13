@@ -557,7 +557,10 @@ class ShootsServer(flight.FlightServerBase):
                 "message":f"Dataframe {source} not found"}
             raise flight.FlightServerError(extra_info=json.dumps(exception))
         
-        table = self._get_arrow_table_from_sql(source, source_file_path, sql)
+        table = self._enqueue_io_request(self._read_arrow_from_parquet,
+                                    args={"name":source,
+                                          "file_path":source_file_path,
+                                          "sql_query":sql})
         target_rows = table.num_rows
 
         self._handle_put_modes(target, mode, target_file_path)
