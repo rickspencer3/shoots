@@ -1,7 +1,7 @@
 # Overview
 Shoots is dataframe storage server for Pandas. 
+ * Designed with ease of use for Pandas users as the primary design goal.
  * Supports multiple clients simultaneous read and write clients.
- * Has a Pandas "native" client to make it easy for Pandas developers.
  * Has built in functions for resampling.
  * Use Apache Parquet files for efficiency on disk.
  * Uses Apache Arrow in memory for efficiency in memory and data transfers.
