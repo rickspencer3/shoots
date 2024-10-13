@@ -584,9 +584,18 @@ class ShootsServer(flight.FlightServerBase):
         source_rows = -1
         target_rows = -1
 
-        df_source = self._load_dataframe_from_file(source, source_bucket)
-        source_rows = df_source.shape[0]
+        source_file_path = self._create_file_path(source,source_bucket)
+        if not os.path.exists(source_file_path):
+            exception = {"type":"FileNotFoundError",
+                "message":f"Dataframe {source} not found"}
+            raise flight.FlightServerError(extra_info=json.dumps(exception))
+        table = self._enqueue_io_request(self._read_arrow_from_parquet,
+                                    args={"name":target,
+                                          "file_path":source_file_path})
 
+        df_source = table.to_pandas()
+
+        source_rows = df_source.shape[0]
         df_source.set_index(time_col, inplace=True)
         df_source = df_source.resample(rule)
 
