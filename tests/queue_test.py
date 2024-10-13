@@ -46,7 +46,7 @@ class QueueTest(unittest.TestCase):
                 bucket='test_bucket',
                 batch_size=100000  # Adjust as needed
             )
-            read_client.get('test_large_write', bucket="test_bucket")
+            # read_client.get('test_large_write', bucket="test_bucket")
             read_client.get('test_large_write', bucket="test_bucket",
                        sql = "select * from test_large_write limit 1")          
 

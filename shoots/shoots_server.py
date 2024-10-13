@@ -169,13 +169,14 @@ class ShootsServer(flight.FlightServerBase):
         except Exception as e:
             raise flight.FlightServerError(extra_info=str(e))
 
+
     def _get_arrow_table_from_sql(self, name, file_path, sql_query):
         try:
-            ctx = SessionContext()
-            ctx.register_parquet(name, file_path)
-            result = ctx.sql(sql_query)
-            table = result.to_arrow_table()
-            return table
+            return self._enqueue_io_request(self._read_arrow_from_parquet,
+                                            args={"name":name,
+                                                  "file_path":file_path,
+                                                  "sql_query":sql_query})
+        #self._read_arrow_from_parquet(name, file_path, sql_query)
         
         except ArrowInvalid as e:
                     msg = f"Failed to read from {file_path}. Most likely the file is open by another proecess."
@@ -188,6 +189,13 @@ class ShootsServer(flight.FlightServerBase):
                 raise flight.FlightServerError(extra_info = json.dumps(exception))
             else:
                 raise e
+
+    def _read_arrow_from_parquet(self, name, file_path, sql_query):
+        ctx = SessionContext()
+        ctx.register_parquet(name, file_path)
+        result = ctx.sql(sql_query)
+        table = result.to_arrow_table()
+        return table
         
     def do_put(self, context, descriptor, reader, writer):
         """
@@ -319,10 +327,10 @@ class ShootsServer(flight.FlightServerBase):
                 # Lock the file to ensure that only one thread writes at a time
                 with self.queue_locks[file_path]:
                     # Perform the actual file write operation
-                    function(**args)
+                    result = function(**args)
                     
                 # If the write succeeds, set the result on the future
-                future.set_result("Write successful")
+                future.set_result(result)
 
             except Exception as e:
                 # If there's an error, set the exception on the future
@@ -570,8 +578,8 @@ class ShootsServer(flight.FlightServerBase):
         
         self._handle_put_modes(target, mode, target_file_path)
 
-        self._enqueue_io_request(function=self._write_arrow_to_parquet,
-                                args={"file_path":target_file_path,
+        self._enqueue_io_request(self._write_arrow_to_parquet,
+                                 args={"file_path":target_file_path,
                                 "data_table":table,
                                 "mode":mode})
 
