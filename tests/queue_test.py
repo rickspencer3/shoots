@@ -43,8 +43,17 @@ class QueueTest(unittest.TestCase):
                 mode=PutMode.APPEND,
                 bucket='test_bucket',
                 batch_size=100000  # Adjust as needed
-            )
-        
+                )
+
+        def multi_bucket_job():
+            for i in range(0,250):
+                self.write_client1.put("df", 
+                                       dataframe1,
+                                       bucket="another_bucket",
+                                       mode=PutMode.REPLACE)
+                df = self.read_client.get("df",bucket="another_bucket")
+                self.assertEqual(len(df), 1000000)
+                
         def read_job():
             for i in range(0,500):
                 try:
@@ -64,7 +73,8 @@ class QueueTest(unittest.TestCase):
             threading.Thread(target=client_write, args=(self.write_client1, dataframe1)),
             threading.Thread(target=client_write, args=(self.write_client2, dataframe2)),
             threading.Thread(target=client_write, args=(self.write_client3, dataframe3)),
-            threading.Thread(target=read_job)]
+            threading.Thread(target=read_job),
+            threading.Thread(target=multi_bucket_job)]
         # Start all threads
         for thread in threads:
             thread.start()
