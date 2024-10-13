@@ -1,27 +1,23 @@
-Shoots is dataframe storage server. Currently is supports pandas, but most likely I will add support for polars in the future.
+# Overview
+Shoots is dataframe storage server for Pandas. 
+ * Supports multiple clients simultaneous read and write clients.
+ * Has a Pandas "native" client to make it easy for Pandas developers.
+ * Has built in functions for resampling.
+ * Use Apache Parquet files for efficiency on disk.
+ * Uses Apache Arrow in memory for efficiency in memory and data transfers.
 
-Shoots is entirely written in Python and is designed for Python users.
+Shoots  is stored on [github](https://github.com/rickspencer3/shoots). Issues and contributions welcome.
 
-Shoots comes in 2 parts, a server and a client library.
-
-Shoots is very early software, but is in a usable state. It is stored on [github](https://github.com/rickspencer3/shoots). Issues and contributions welcome.
-
-# shoots_server
+## shoots_server
 The server tries to be a fairly faithful Apache Flight Server, meaning that you should be able to use the Apache Arrow Flight client libraries directly. It is entirely built upon the upstream [Apache Arrow project](https://arrow.apache.org/).
 
-Under the hood, the server receives and serves pandas dataframes, storing thenm on disk in [Apache Parquet](https://parquet.apache.org/) format. However, shoots is designed so that, as a user, you don't need to know about the underlying storage formats and libraries.
 
-# shoots_client
+## shoots_client
 The client pieces wrap the [Apache FlightClient](https://arrow.apache.org/docs/python/generated/pyarrow.flight.FlightClient.html) to offer an interface for pandas developers, abstracting away the Apache Arrow and Flight concepts.
 
 # usage
 ## installation
 There is a [pypi package](https://pypi.org/project/shoots/) so you can install using pip(3):
-
-```bash
-pip install shoots
-```
-or
 
 ```bash
 pip3 install shoots
