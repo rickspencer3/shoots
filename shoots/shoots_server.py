@@ -168,7 +168,6 @@ class ShootsServer(flight.FlightServerBase):
                     msg = f"Failed to read from {file_path}. Most likely the file is open by another proecess."
                     exception = {"type":"ShootsIOError", "message":msg}
                     raise flight.FlightServerError(extra_info = json.dumps(exception))
-                return flight.RecordBatchStream(table)
 
         except flight.FlightServerError as e:
             raise e
@@ -273,14 +272,18 @@ class ShootsServer(flight.FlightServerBase):
             except StopIteration:
                 break
         logger.debug(f"do_put() returning")
-
+        
     def _handle_put_modes(self, name, mode, file_path):
         parquet_exists = os.path.exists(file_path)
         if mode == "error" and parquet_exists:
             self._raise_dataframe_exists_error(name)
         
         if mode == "replace" and os.path.exists(file_path):
-            os.remove(file_path)
+            self._enqueue_io_request(self._delete_parquet,
+                                     args={"file_path":file_path})
+
+    def _delete_parquet(self, file_path):
+        os.remove(file_path)
 
     def _raise_dataframe_exists_error(self, name):
         exception = {"type":"FileExistsError",
@@ -641,15 +644,13 @@ class ShootsServer(flight.FlightServerBase):
             raise flight.FlightServerError(extra_info=json.dumps(exception))
         
         bucket_is_empty = not os.listdir(bucket_path)
-        if not bucket_is_empty:
-            if mode == "error":
+        if not bucket_is_empty and mode == "error":
                 exception = {"type":"BucketNotEmptyError",
                              "message":f"Bucket Not Empty: {bucket}"}
                 raise flight.FlightServerError(extra_info=json.dumps(exception))
-            elif mode == "delete":
-                shutil.rmtree(bucket_path)
-        else: 
-            os.rmdir(bucket_path) 
+        else:
+            shutil.rmtree(bucket_path)
+ 
         result_info = {"message":f"bucket {bucket} deleted"}
         return self._flight_result_from_dict(result_info)
 
@@ -679,19 +680,12 @@ class ShootsServer(flight.FlightServerBase):
         name = delete_info["name"]
         bucket = delete_info["bucket"]
         file_path = self._create_file_path(name, bucket)
-
-        try:
-            os.remove(file_path)
-        except FileNotFoundError:
+        if not os.path.exists(file_path):
             exception = {"type":"FileNotFoundError",
-                         "message":f"Dataframe {name} not found"}
+                            "message":f"Dataframe {name} not found"}
             raise flight.FlightServerError(extra_info=json.dumps(exception))
-        
-        except PermissionError:
-            raise flight.FlightUnauthorizedError(f"Insufficent permisions to delete {name}")
-        except OSError as e:
-            raise flight.FlightServerError(f"Error encountered deleting {name}",
-                                           extra_info=str(e))
+        self._enqueue_io_request(self._delete_parquet,
+                                     args={"file_path":file_path})
         
         result_info = {"success":True, "message":f"deleted {name}"}
         return self._flight_result_from_dict(result_info)
