@@ -143,6 +143,11 @@ class GetRequest(BaseModel):
             raise ValueError('name must be a non-empty string')
         return v
 
+class ShootsIOError(Exception):
+    """Custom exception for DataFusion-related errors."""
+    def __init__(self, message):
+        super().__init__(message)
+
 class DataFusionError(Exception):
     """Custom exception for DataFusion-related errors."""
     def __init__(self, message):
@@ -665,7 +670,8 @@ class ShootsClient:
                 "FileExistsError": FileExistsError,
                 "DataFusionError": DataFusionError,
                 "FileNotFoundError": FileNotFoundError,
-                "BucketNotEmptyError":BucketNotEmptyError
+                "BucketNotEmptyError":BucketNotEmptyError,
+                "ShootsIOError":ShootsIOError
             }
             return exception_map[exception_type](message)
         except:

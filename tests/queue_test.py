@@ -8,7 +8,7 @@ import pyarrow.parquet as pq
 import queue
 from shoots import ShootsServer, ShootsClient, PutMode, BucketDeleteMode
 from pyarrow.flight import Location
-import logging
+# import logging
 # logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 class QueueTest(unittest.TestCase):
@@ -16,12 +16,13 @@ class QueueTest(unittest.TestCase):
         # Setup server and client as specified
         location = Location.for_grpc_tcp("localhost", 8085)
         self.server = ShootsServer(location, "queuebucket")
-        self.client1 = ShootsClient("localhost", 8085)
-        self.client2 = ShootsClient("localhost", 8085)
-        self.client3 = ShootsClient("localhost", 8085)
-        
+        self.write_client1 = ShootsClient("localhost", 8085)
+        self.write_client2 = ShootsClient("localhost", 8085)
+        self.write_client3 = ShootsClient("localhost", 8085)
+        self.read_client = ShootsClient("localhost", 8085)
+
     def tearDown(self):
-        self.client1.delete_bucket("test_bucket", BucketDeleteMode.DELETE_CONTENTS)
+        self.write_client1.delete_bucket("test_bucket", BucketDeleteMode.DELETE_CONTENTS)
 
     def test_concurrent_large_writes_with_delay(self):
         """
@@ -34,24 +35,43 @@ class QueueTest(unittest.TestCase):
         dataframe2 = pd.DataFrame({'column1': range(num_rows, 2 * num_rows)})
         dataframe3 = pd.DataFrame({'column1': range(2 * num_rows, 3 * num_rows)})
 
-        # Function to simulate each client writing its dataframe
-        def client_write(client, dataframe):
-            client.put(
+        def client_write(write_client, dataframe):
+            write_client.put(
                 name='test_large_write',
                 dataframe=dataframe,
                 mode=PutMode.APPEND,
                 bucket='test_bucket',
-                batch_size=100000  # Adjust as needed
-            )
+                batch_size=100000
+                )
 
-        # Create threads for each client
+        def multi_bucket_job():
+            for i in range(0,250):
+                self.write_client1.put("df", 
+                                       dataframe1,
+                                       bucket="another_bucket",
+                                       mode=PutMode.REPLACE)
+                df = self.read_client.get("df",bucket="another_bucket")
+                self.assertEqual(len(df), 1000000)
+                
+        def read_job():
+            for i in range(0,500):
+                try:
+                    if i % 2:
+                        sql = "select * from test_large_write limit 1"
+                    else:
+                        sql = None
+                    self.read_client.get('test_large_write', bucket="test_bucket",
+                            sql=sql)
+                except FileNotFoundError as e:
+                    pass # most likely the read job simply got to the file first
+
         threads = [
-            threading.Thread(target=client_write, args=(self.client1, dataframe1)),
-            threading.Thread(target=client_write, args=(self.client2, dataframe2)),
-            threading.Thread(target=client_write, args=(self.client3, dataframe3))
-        ]
-
-        # Start all threads
+            threading.Thread(target=client_write, args=(self.write_client1, dataframe1)),
+            threading.Thread(target=client_write, args=(self.write_client2, dataframe2)),
+            threading.Thread(target=client_write, args=(self.write_client3, dataframe3)),
+            threading.Thread(target=read_job),
+            threading.Thread(target=multi_bucket_job)]
+        
         for thread in threads:
             thread.start()
 
@@ -59,7 +79,7 @@ class QueueTest(unittest.TestCase):
         for thread in threads:
             thread.join()
 
-        result_dataframe = self.client1.get('test_large_write', bucket="test_bucket")
+        result_dataframe = self.write_client1.get('test_large_write', bucket="test_bucket")
         # Verify that the total number of rows matches the expected sum
         expected_num_rows = num_rows * 3
         actual_num_rows = len(result_dataframe)

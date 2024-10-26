@@ -1,6 +1,6 @@
 import os
 import pyarrow as pa
-from pyarrow import flight
+from pyarrow import flight, ArrowInvalid
 import pyarrow.parquet as pq
 import fastparquet as fp
 from datafusion import SessionContext
@@ -11,7 +11,7 @@ import argparse
 import jwt
 import datetime
 import queue
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import Future
 import logging
 
 logger = logging.getLogger(__name__)
@@ -79,7 +79,7 @@ class ShootsServer(flight.FlightServerBase):
                                    middleware=middleware,
                                    *args, **kwargs)
         
-        self.write_queues = {}
+        self.io_queues = {}
         self.queue_locks = {}
 
     def generate_admin_jwt(self):
@@ -151,12 +151,23 @@ class ShootsServer(flight.FlightServerBase):
             
             if "sql" in ticket_info:
                 sql_query = ticket_info["sql"]
-                table = self._get_arrow_table_from_sql(name, file_path, sql_query)
+                table = self._enqueue_io_request(self._read_arrow_from_parquet,
+                                        args={"name":name, 
+                                              "file_path":file_path,
+                                              "sql_query":sql_query})
                 return flight.RecordBatchStream(table)
             
             else:
-                table = pq.read_table(file_path)
-                return flight.RecordBatchStream(table)
+                try:
+                    logger.debug(f"enqueing read from {file_path}")
+                    table = self._enqueue_io_request(self._read_arrow_from_parquet,
+                                                     args={"file_path":file_path})
+                    return flight.RecordBatchStream(table)
+                    
+                except ArrowInvalid as e:
+                    msg = f"Failed to read from {file_path}. Most likely the file is open by another proecess."
+                    exception = {"type":"ShootsIOError", "message":msg}
+                    raise flight.FlightServerError(extra_info = json.dumps(exception))
 
         except flight.FlightServerError as e:
             raise e
@@ -164,19 +175,23 @@ class ShootsServer(flight.FlightServerBase):
         except Exception as e:
             raise flight.FlightServerError(extra_info=str(e))
 
-    def _get_arrow_table_from_sql(self, name, file_path, sql_query):
-        try:
-            ctx = SessionContext()
-            ctx.register_parquet(name, file_path)
-            result = ctx.sql(sql_query)
-            table = result.to_arrow_table()
-            return table
-        except Exception as e:
-            if "DataFusion error" in str(e):
-                exception = {"type":"DataFusionError", "message":str(e)}
-                raise flight.FlightServerError(extra_info = json.dumps(exception))
-            else:
-                raise e
+    def _read_arrow_from_parquet(self, name=None, file_path=None, sql_query=None):
+        logger.debug(f"reading from parquest with {(name, file_path,sql_query)}")
+        if sql_query is None:
+            table = pq.read_table(file_path)
+            logger.debug(f"read table from {file_path}")
+        else:
+            try:
+                ctx = SessionContext()
+                ctx.register_parquet(name, file_path)
+                result = ctx.sql(sql_query)
+                table = result.to_arrow_table()
+                   
+            except Exception as e:
+                if "DataFusion error" in str(e):
+                    exception = {"type":"DataFusionError", "message":str(e)}
+                    raise flight.FlightServerError(extra_info = json.dumps(exception))
+        return table
         
     def do_put(self, context, descriptor, reader, writer):
         """
@@ -244,9 +259,10 @@ class ShootsServer(flight.FlightServerBase):
                 if data_chunk is None:
                     break
                 logger.debug(f"enqueing chunck {chunks}")
-                self._enqueue_write_request(file_path=file_path,
-                                        data_table=data_chunk.data,
-                                        mode = mode)
+                self._enqueue_io_request(function=self._write_arrow_to_parquet,
+                                        args={"data_table":data_chunk.data,
+                                         "file_path":file_path,
+                                        "mode":mode})
                 
                 logger.debug(f"chunk {chunks} enqueued")
                 parquet_exists = True
@@ -256,14 +272,18 @@ class ShootsServer(flight.FlightServerBase):
             except StopIteration:
                 break
         logger.debug(f"do_put() returning")
-
+        
     def _handle_put_modes(self, name, mode, file_path):
         parquet_exists = os.path.exists(file_path)
         if mode == "error" and parquet_exists:
             self._raise_dataframe_exists_error(name)
         
         if mode == "replace" and os.path.exists(file_path):
-            os.remove(file_path)
+            self._enqueue_io_request(self._delete_parquet,
+                                     args={"file_path":file_path})
+
+    def _delete_parquet(self, file_path):
+        os.remove(file_path)
 
     def _raise_dataframe_exists_error(self, name):
         exception = {"type":"FileExistsError",
@@ -276,46 +296,47 @@ class ShootsServer(flight.FlightServerBase):
         if mode not in put_modes:
             raise flight.FlightServerError(f"put mode is {mode}, must be one of {put_modes}")
 
-    def _enqueue_write_request(self, file_path, data_table, mode):
+    def _enqueue_io_request(self, function, args):
         """
         Enqueues a write request and processes it synchronously. The client will
         block and wait for the result of the write operation.
         """
-        if file_path not in self.write_queues:
-            self.write_queues[file_path] = queue.Queue()
+        file_path = args["file_path"]
+        if file_path not in self.io_queues:
+            self.io_queues[file_path] = queue.Queue()
             self.queue_locks[file_path] = threading.Lock()
             
         future = Future()  # Create a Future to track the result of the write operation
-        self.write_queues[file_path].put((data_table, mode, future))
-
+        self.io_queues[file_path].put((function, args, future))
+        logger.debug(f"{str(function)} added to i/o queue. queue length: {self.io_queues[file_path].qsize()}")
         # Directly process the queue synchronously (relying on Flight's threading model)
-        self._process_write_queue(file_path)
+        self._process_io_queue(file_path)
 
         # Block the client here by waiting for the result of the Future
         return future.result()
 
-    def _process_write_queue(self, file_path):
+    def _process_io_queue(self, file_path):
         """
         Processes all pending write requests in the queue for the given file_path.
         Ensures that only one thread can write to the file at a time using a lock.
         """
-        while not self.write_queues[file_path].empty():
-            data_table, mode, future = self.write_queues[file_path].get()
-
+        while not self.io_queues[file_path].empty():
+            function, args, future = self.io_queues[file_path].get()
+            logger.debug(f"processing i/o queue for {file_path}")
             try:
                 # Lock the file to ensure that only one thread writes at a time
                 with self.queue_locks[file_path]:
                     # Perform the actual file write operation
-                    self._write_arrow_to_parquet(file_path=file_path, data_table=data_table, mode=mode)
+                    result = function(**args)
                     
                 # If the write succeeds, set the result on the future
-                future.set_result("Write successful")
+                future.set_result(result)
 
             except Exception as e:
                 # If there's an error, set the exception on the future
                 future.set_exception(e)
 
-            self.write_queues[file_path].task_done()
+            self.io_queues[file_path].task_done()
 
     def _write_arrow_to_parquet(self, file_path, data_table, mode):
         """
@@ -519,13 +540,17 @@ class ShootsServer(flight.FlightServerBase):
                 "message":f"Dataframe {source} not found"}
             raise flight.FlightServerError(extra_info=json.dumps(exception))
         
-        table = self._get_arrow_table_from_sql(source, source_file_path, sql)
+        table = self._enqueue_io_request(self._read_arrow_from_parquet,
+                                    args={"name":source,
+                                          "file_path":source_file_path,
+                                          "sql_query":sql})
         target_rows = table.num_rows
 
         self._handle_put_modes(target, mode, target_file_path)
-        self._enqueue_write_request(file_path=target_file_path,
-                                data_table=table,
-                                mode=mode)
+        self._enqueue_io_request(function=self._write_arrow_to_parquet,
+                                 args = {"file_path":target_file_path,
+                                "data_table":table,
+                                "mode":mode})
         
         return self._flight_result_from_dict({"target_rows":target_rows})
     
@@ -542,9 +567,18 @@ class ShootsServer(flight.FlightServerBase):
         source_rows = -1
         target_rows = -1
 
-        df_source = self._load_dataframe_from_file(source, source_bucket)
-        source_rows = df_source.shape[0]
+        source_file_path = self._create_file_path(source,source_bucket)
+        if not os.path.exists(source_file_path):
+            exception = {"type":"FileNotFoundError",
+                "message":f"Dataframe {source} not found"}
+            raise flight.FlightServerError(extra_info=json.dumps(exception))
+        table = self._enqueue_io_request(self._read_arrow_from_parquet,
+                                    args={"name":target,
+                                          "file_path":source_file_path})
 
+        df_source = table.to_pandas()
+
+        source_rows = df_source.shape[0]
         df_source.set_index(time_col, inplace=True)
         df_source = df_source.resample(rule)
 
@@ -556,22 +590,13 @@ class ShootsServer(flight.FlightServerBase):
         
         self._handle_put_modes(target, mode, target_file_path)
 
-        self._enqueue_write_request(file_path=target_file_path,
-                                data_table=table,
-                                mode=mode)
+        self._enqueue_io_request(self._write_arrow_to_parquet,
+                                 args={"file_path":target_file_path,
+                                "data_table":table,
+                                "mode":mode})
 
         return self._flight_result_from_dict({"source_rows":source_rows,
                                               "target_rows":target_rows})
-
-    def _load_dataframe_from_file(self, source, source_bucket):
-        file_name = self._create_file_path(source, source_bucket)
-        if not os.path.exists(file_name):
-            exception = {"type":"FileNotFoundError",
-                "message":f"Dataframe {source} not found"}
-            raise flight.FlightServerError(extra_info=json.dumps(exception))
-        table = pq.read_table(file_name)
-        df_source = table.to_pandas()
-        return df_source
 
     def list_actions(self, context):
         """
@@ -619,15 +644,13 @@ class ShootsServer(flight.FlightServerBase):
             raise flight.FlightServerError(extra_info=json.dumps(exception))
         
         bucket_is_empty = not os.listdir(bucket_path)
-        if not bucket_is_empty:
-            if mode == "error":
+        if not bucket_is_empty and mode == "error":
                 exception = {"type":"BucketNotEmptyError",
                              "message":f"Bucket Not Empty: {bucket}"}
                 raise flight.FlightServerError(extra_info=json.dumps(exception))
-            elif mode == "delete":
-                shutil.rmtree(bucket_path)
-        else: 
-            os.rmdir(bucket_path) 
+        else:
+            shutil.rmtree(bucket_path)
+ 
         result_info = {"message":f"bucket {bucket} deleted"}
         return self._flight_result_from_dict(result_info)
 
@@ -657,19 +680,12 @@ class ShootsServer(flight.FlightServerBase):
         name = delete_info["name"]
         bucket = delete_info["bucket"]
         file_path = self._create_file_path(name, bucket)
-
-        try:
-            os.remove(file_path)
-        except FileNotFoundError:
+        if not os.path.exists(file_path):
             exception = {"type":"FileNotFoundError",
-                         "message":f"Dataframe {name} not found"}
+                            "message":f"Dataframe {name} not found"}
             raise flight.FlightServerError(extra_info=json.dumps(exception))
-        
-        except PermissionError:
-            raise flight.FlightUnauthorizedError(f"Insufficent permisions to delete {name}")
-        except OSError as e:
-            raise flight.FlightServerError(f"Error encountered deleting {name}",
-                                           extra_info=str(e))
+        self._enqueue_io_request(self._delete_parquet,
+                                     args={"file_path":file_path})
         
         result_info = {"success":True, "message":f"deleted {name}"}
         return self._flight_result_from_dict(result_info)

@@ -1,6 +1,9 @@
 from base_test import ShootsTestBase
 from shoots import ShootsServer, ShootsClient
 from pyarrow.flight import Location, FlightClient
+# import logging
+# logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
 
 class InsecureTest(ShootsTestBase):
     port = 8082
