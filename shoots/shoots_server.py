@@ -143,38 +143,44 @@ class ShootsServer(flight.FlightServerBase):
             ticket_info = json.loads(ticket.ticket.decode())
             name = ticket_info["name"]
             bucket = ticket_info["bucket"]
-            file_path = self._create_file_path(name, bucket)
-            if not os.path.exists(file_path):
-                exception = {"type":"FileNotFoundError",
-                             "message": f"dataframe {name} in bucket {bucket} not found"}
-                raise flight.FlightServerError(extra_info=json.dumps(exception))
+            sql_query = ticket_info.get("sql", None)
             
-            if "sql" in ticket_info:
-                sql_query = ticket_info["sql"]
-                table = self._enqueue_io_request(self._read_arrow_from_parquet,
-                                        args={"name":name, 
-                                              "file_path":file_path,
-                                              "sql_query":sql_query})
-                return flight.RecordBatchStream(table)
-            
-            else:
-                try:
-                    logger.debug(f"enqueing read from {file_path}")
-                    table = self._enqueue_io_request(self._read_arrow_from_parquet,
-                                                     args={"file_path":file_path})
-                    return flight.RecordBatchStream(table)
-                    
-                except ArrowInvalid as e:
-                    msg = f"Failed to read from {file_path}. Most likely the file is open by another proecess."
-                    exception = {"type":"ShootsIOError", "message":msg}
-                    raise flight.FlightServerError(extra_info = json.dumps(exception))
-
+            table = self._do_get_arrow_table(name, bucket, sql_query)
+        
         except flight.FlightServerError as e:
             raise e
 
         except Exception as e:
             raise flight.FlightServerError(extra_info=str(e))
+        
+        return flight.RecordBatchStream(table)
 
+    def _do_get_arrow_table(self, name, bucket, sql_query=None):
+        file_path = self._create_file_path(name, bucket)
+        if not os.path.exists(file_path):
+            exception = {"type":"FileNotFoundError",
+                             "message": f"dataframe {name} in bucket {bucket} not found"}
+            raise flight.FlightServerError(extra_info=json.dumps(exception))
+            
+        if sql_query:
+            table = self._enqueue_io_request(self._read_arrow_from_parquet,
+                                        args={"name":name, 
+                                              "file_path":file_path,
+                                              "sql_query":sql_query})
+            
+        else:
+            try:
+                logger.debug(f"enqueing read from {file_path}")
+                table = self._enqueue_io_request(self._read_arrow_from_parquet,
+                                                     args={"file_path":file_path})
+                
+                    
+            except ArrowInvalid as e:
+                msg = f"Failed to read from {file_path}. Most likely the file is open by another proecess."
+                exception = {"type":"ShootsIOError", "message":msg}
+                raise flight.FlightServerError(extra_info = json.dumps(exception))
+        return table
+    
     def _read_arrow_from_parquet(self, name=None, file_path=None, sql_query=None):
         logger.debug(f"reading from parquest with {(name, file_path,sql_query)}")
         if sql_query is None:
