@@ -245,7 +245,7 @@ class ShootsServer(flight.FlightServerBase):
         mode = command_info["mode"]
         bucket = command_info["bucket"]
         logger.info(f"do_put: {name}, mode:{mode}, bucket:{bucket}")
-
+        print(f"do_put: {name}, mode:{mode}, bucket:{bucket}")
         # bail if there is incorrect data in the mode
         self._raise_if_invalid_put_mode(mode)
 
