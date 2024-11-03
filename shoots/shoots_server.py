@@ -62,8 +62,8 @@ class ShootsServer(flight.FlightServerBase):
 
         #print admin token
         if self.secret:
-            print("Generating admin JWT:")
-            print(self.generate_admin_jwt())
+            logging.info("Generating admin JWT:")
+            logging.info(self.generate_admin_jwt())
             auth_handler = JWTServerAuthHandler(self.secret)
 
         # set up TLS is specified
@@ -145,7 +145,8 @@ class ShootsServer(flight.FlightServerBase):
             name = ticket_info["name"]
             bucket = ticket_info["bucket"]
             sql_query = ticket_info.get("sql", None)
-            
+            logger.info(f"do_get: {name}, bucket:{bucket}, sql:{sql_query}")
+
             table = self._do_get_arrow_table(name, bucket, sql_query)
         
         except flight.FlightServerError as e:
@@ -246,7 +247,7 @@ class ShootsServer(flight.FlightServerBase):
         mode = command_info["mode"]
         bucket = command_info["bucket"]
         logger.info(f"do_put: {name}, mode:{mode}, bucket:{bucket}")
-        
+
         # bail if there is incorrect data in the mode
         self._raise_if_invalid_put_mode(mode)
 
@@ -510,6 +511,8 @@ class ShootsServer(flight.FlightServerBase):
         action_info = None
         if action_bytes:
             action_info = json.loads(action_bytes)
+        
+        logger.info(f"do_action: {action}, action_info:{action_bytes}")
 
         if action == "delete":
             return self._delete(action_info)
@@ -722,7 +725,7 @@ class ShootsServer(flight.FlightServerBase):
         shutdown_thread = threading.Thread(target=super(ShootsServer, self).shutdown)
         shutdown_thread.start()
         
-        print("\nShutting down Shoots server")
+        logging.info("\nShutting down Shoots server")
         return self._list_to_flight_result(["shutdown command received"])
 
     def _self_decode_jwt(self, token):
@@ -734,7 +737,7 @@ class ShootsServer(flight.FlightServerBase):
         Serve until shutdown is called.
 
         """
-        print(f"Starting Shoots server on {self.location.uri.decode()}")
+        logging.info(f"Starting Shoots server on {self.location.uri.decode()}")
         
         super(ShootsServer, self).serve()
 
