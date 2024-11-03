@@ -145,9 +145,8 @@ class ShootsServer(flight.FlightServerBase):
             name = ticket_info["name"]
             bucket = ticket_info["bucket"]
             sql_query = ticket_info.get("sql", None)
-
             logger.info(f"do_get: {name}, bucket:{bucket}, sql:{sql_query}")
-            print(f" * do_get: {name}, bucket:{bucket}, sql:{sql_query}")
+
             table = self._do_get_arrow_table(name, bucket, sql_query)
         
         except flight.FlightServerError as e:
