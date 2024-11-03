@@ -55,7 +55,7 @@ class ShootsServer(flight.FlightServerBase):
         self.location = location
         self.bucket_dir = bucket_dir
         self.secret = secret
-        
+        logging.info(f"initializing with location: {str(location)}, bucket_dir:{bucket_dir}, with secret:{secret is not None}, with certs: {certs is not None}")
         # set up the bucket directory
         os.makedirs(self.bucket_dir, exist_ok=True)
         auth_handler = None
@@ -396,7 +396,7 @@ class ShootsServer(flight.FlightServerBase):
             The regex criteria is not yet implemented on the server.
         """
 
-        
+        logging.info("list_flights")
 
         criteria_info = json.loads(criteria.decode())
         bucket = criteria_info["bucket"]
