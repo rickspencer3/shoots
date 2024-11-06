@@ -14,8 +14,14 @@ import queue
 from concurrent.futures import Future
 import logging
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper()) 
+app_name = os.getenv("PYTHON_APP_NAME", "shoots")
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+
+logging.basicConfig(format=
+                "%(asctime)s %(name)s %(levelname)s: %(message)s [%(processName)s]",
+                level=os.getenv("LOG_LEVEL", "INFO").upper()) 
+logger = logging.getLogger(app_name)
+logger.info(f"logging initialized for {app_name}")
 
 try:
     from .jwt_server_auth import JWTServerAuthHandler, JWTMiddleware
