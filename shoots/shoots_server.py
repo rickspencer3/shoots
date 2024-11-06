@@ -15,7 +15,7 @@ from concurrent.futures import Future
 import logging
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO) 
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper()) 
 
 try:
     from .jwt_server_auth import JWTServerAuthHandler, JWTMiddleware
@@ -55,15 +55,15 @@ class ShootsServer(flight.FlightServerBase):
         self.location = location
         self.bucket_dir = bucket_dir
         self.secret = secret
-        logging.info(f"initializing with location: {str(location)}, bucket_dir:{bucket_dir}, with secret:{secret is not None}, with certs: {certs is not None}")
+        logger.info(f"initializing with location: {str(location)}, bucket_dir:{bucket_dir}, with secret:{secret is not None}, with certs: {certs is not None}")
         # set up the bucket directory
         os.makedirs(self.bucket_dir, exist_ok=True)
         auth_handler = None
 
         #print admin token
         if self.secret:
-            logging.info("Generating admin JWT:")
-            logging.info(self.generate_admin_jwt())
+            logger.info("Generating admin JWT:")
+            logger.info(self.generate_admin_jwt())
             auth_handler = JWTServerAuthHandler(self.secret)
 
         # set up TLS is specified
@@ -94,6 +94,7 @@ class ShootsServer(flight.FlightServerBase):
 
             return jwt.encode(payload, self.secret, algorithm='HS256')
         else:
+            logger.error("Server must be started with a secret to use JWTs")
             raise ValueError("Server must be started with a secret to use JWTs")
 
     def do_get(self, context, ticket):
@@ -150,9 +151,11 @@ class ShootsServer(flight.FlightServerBase):
             table = self._do_get_arrow_table(name, bucket, sql_query)
         
         except flight.FlightServerError as e:
+            logger.exception(str(e))
             raise e
 
         except Exception as e:
+            logger.exception(str(e))
             raise flight.FlightServerError(extra_info=str(e))
         
         return flight.RecordBatchStream(table)
@@ -162,6 +165,7 @@ class ShootsServer(flight.FlightServerBase):
         if not os.path.exists(file_path):
             exception = {"type":"FileNotFoundError",
                              "message": f"dataframe {name} in bucket {bucket} not found"}
+            logger.exception(exception)
             raise flight.FlightServerError(extra_info=json.dumps(exception))
             
         if sql_query:
@@ -180,6 +184,7 @@ class ShootsServer(flight.FlightServerBase):
             except ArrowInvalid as e:
                 msg = f"Failed to read from {file_path}. Most likely the file is open by another proecess."
                 exception = {"type":"ShootsIOError", "message":msg}
+                logger.exception(exception)
                 raise flight.FlightServerError(extra_info = json.dumps(exception))
         return table
     
@@ -198,6 +203,7 @@ class ShootsServer(flight.FlightServerBase):
             except Exception as e:
                 if "DataFusion error" in str(e):
                     exception = {"type":"DataFusionError", "message":str(e)}
+                    logger.exception(exception)
                     raise flight.FlightServerError(extra_info = json.dumps(exception))
         return table
         
@@ -297,12 +303,14 @@ class ShootsServer(flight.FlightServerBase):
     def _raise_dataframe_exists_error(self, name):
         exception = {"type":"FileExistsError",
                             "message":f"Dataframe {name} Exists"}
+        logger.exception(exception)
         raise flight.FlightServerError(f"File {name} Exists", extra_info=json.dumps(exception))
 
             # TODO: Handle other exceptions
 
     def _raise_if_invalid_put_mode(self, mode):
         if mode not in put_modes:
+            logger.exception(f"put mode is {mode}, must be one of {put_modes}")
             raise flight.FlightServerError(f"put mode is {mode}, must be one of {put_modes}")
 
     def _enqueue_io_request(self, function, args):
@@ -364,6 +372,7 @@ class ShootsServer(flight.FlightServerBase):
                 "type": "FileNotFoundError",
                 "message": f"Attempt to append to missing dataframe {file_path}."
             }
+            logger.exception(exception)
             raise flight.FlightServerError(extra_info=json.dumps(exception))
         
     def list_flights(self, context, criteria):
@@ -396,7 +405,7 @@ class ShootsServer(flight.FlightServerBase):
             The regex criteria is not yet implemented on the server.
         """
 
-        logging.info("list_flights")
+        logger.info("list_flights")
 
         criteria_info = json.loads(criteria.decode())
         bucket = criteria_info["bucket"]
@@ -408,6 +417,7 @@ class ShootsServer(flight.FlightServerBase):
             if not os.path.exists(bucket_dir):
                 exception = {"type":"FileNotFoundError",
                              "message":f"No such bucket {bucket}"}
+                logger.exception(exception)
                 raise flight.FlightServerError(extra_info=json.dumps(exception))
             
         # call helper function to get a list of files, bucket may be NONE
@@ -549,6 +559,7 @@ class ShootsServer(flight.FlightServerBase):
         if not os.path.exists(source_file_path):
             exception = {"type":"FileNotFoundError",
                 "message":f"Dataframe {source} not found"}
+            logger.exception(exception)
             raise flight.FlightServerError(extra_info=json.dumps(exception))
         
         table = self._enqueue_io_request(self._read_arrow_from_parquet,
@@ -582,6 +593,7 @@ class ShootsServer(flight.FlightServerBase):
         if not os.path.exists(source_file_path):
             exception = {"type":"FileNotFoundError",
                 "message":f"Dataframe {source} not found"}
+            logger.exception(exception)
             raise flight.FlightServerError(extra_info=json.dumps(exception))
         table = self._enqueue_io_request(self._read_arrow_from_parquet,
                                     args={"name":target,
@@ -652,12 +664,14 @@ class ShootsServer(flight.FlightServerBase):
         if not os.path.isdir(bucket_path):
             exception = {"type":"FileNotFoundError",
                 "message":f"Bucket {bucket} not found"}
+            logger.exception(exception)
             raise flight.FlightServerError(extra_info=json.dumps(exception))
         
         bucket_is_empty = not os.listdir(bucket_path)
         if not bucket_is_empty and mode == "error":
                 exception = {"type":"BucketNotEmptyError",
                              "message":f"Bucket Not Empty: {bucket}"}
+                logger.exception(exception)
                 raise flight.FlightServerError(extra_info=json.dumps(exception))
         else:
             shutil.rmtree(bucket_path)
@@ -694,6 +708,7 @@ class ShootsServer(flight.FlightServerBase):
         if not os.path.exists(file_path):
             exception = {"type":"FileNotFoundError",
                             "message":f"Dataframe {name} not found"}
+            logger.exception(exception)
             raise flight.FlightServerError(extra_info=json.dumps(exception))
         self._enqueue_io_request(self._delete_parquet,
                                      args={"file_path":file_path})
@@ -725,7 +740,7 @@ class ShootsServer(flight.FlightServerBase):
         shutdown_thread = threading.Thread(target=super(ShootsServer, self).shutdown)
         shutdown_thread.start()
         
-        logging.info("\nShutting down Shoots server")
+        logger.info("\nShutting down Shoots server")
         return self._list_to_flight_result(["shutdown command received"])
 
     def _self_decode_jwt(self, token):
@@ -737,7 +752,7 @@ class ShootsServer(flight.FlightServerBase):
         Serve until shutdown is called.
 
         """
-        logging.info(f"Starting Shoots server on {self.location.uri.decode()}")
+        logger.info(f"Starting Shoots server on {self.location.uri.decode()}")
         
         super(ShootsServer, self).serve()
 
@@ -783,6 +798,7 @@ def main():
         location = flight.Location.for_grpc_tcp(args.host, args.port)
         server = ShootsServer(location, bucket_dir=args.bucket_dir, secret=args.secret)
     else:
+        logger.error("Both cert_file and key_file must be provided, or neither should be.")
         raise ValueError("Both cert_file and key_file must be provided, or neither should be.")
 
     server.serve()
