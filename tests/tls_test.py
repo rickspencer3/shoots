@@ -22,6 +22,13 @@ class TLSTest(ShootsTestBase):
         kwargs = {"tls_root_certs":self.root_cert}
         return FlightClient(url, **kwargs)
 
+    def test_use_address_not_in_cert(self):
+        with self.assertRaises(FlightUnavailableError):
+            ShootsClient("0.0.0.0", 
+            self.port, 
+            True,
+            self.root_cert).ping()
+
     def test_use_alternate_ip_address(self):
         c = ShootsClient("127.0.0.1", 
             self.port, 
