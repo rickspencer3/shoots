@@ -337,7 +337,7 @@ class ShootsTestBase(unittest.TestCase):
 
     def test_ping(self):
         result = self.shoots_client.ping()
-        self.assertCountEqual(result,"pong")
+        self.assertEqual(result,"pong")
     
     def test_bad_sql(self):
         self.shoots_client.put("100x",self.dataframe0,mode=PutMode.REPLACE)    
